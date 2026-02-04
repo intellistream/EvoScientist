@@ -2,8 +2,6 @@
 
 from unittest import mock
 
-import pytest
-
 from EvoScientist.llm import (
     MODELS,
     DEFAULT_MODEL,
@@ -133,7 +131,7 @@ class TestGetChatModel:
         """Test that get_chat_model uses default model when model=None."""
         mock_init.return_value = "mock_model"
 
-        result = get_chat_model()
+        get_chat_model()
 
         mock_init.assert_called_once()
         call_kwargs = mock_init.call_args[1]

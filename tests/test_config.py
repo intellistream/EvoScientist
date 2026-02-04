@@ -1,9 +1,7 @@
 """Tests for EvoScientist configuration management."""
 
 import os
-import tempfile
 from pathlib import Path
-from unittest import mock
 
 import pytest
 import yaml

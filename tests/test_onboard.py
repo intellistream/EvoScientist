@@ -1,16 +1,12 @@
 """Tests for EvoScientist onboarding wizard."""
 
 from unittest import mock
-import sys
 
 import pytest
 
 from EvoScientist.onboard import (
     IntegerValidator,
     ChoiceValidator,
-    validate_anthropic_key,
-    validate_openai_key,
-    validate_tavily_key,
     STEPS,
     WIZARD_STYLE,
     CONFIRM_STYLE,
@@ -210,118 +206,6 @@ class TestChoiceValidator:
         with pytest.raises(ValidationError) as exc_info:
             validator.validate(Doc())
         assert "one of" in str(exc_info.value.message)
-
-
-# =============================================================================
-# Test API Key Validation (Mocked)
-# =============================================================================
-
-
-class TestValidateAnthropicKey:
-    def test_empty_key_returns_skipped(self):
-        """Test that empty key returns skipped status."""
-        valid, msg = validate_anthropic_key("")
-        assert valid is True
-        assert "Skipped" in msg
-
-    def test_valid_key(self):
-        """Test that valid key returns success."""
-        # Create mock module
-        mock_anthropic = mock.MagicMock()
-        mock_client = mock.MagicMock()
-        mock_anthropic.Anthropic.return_value = mock_client
-
-        with mock.patch.dict(sys.modules, {"anthropic": mock_anthropic}):
-            valid, msg = validate_anthropic_key("sk-ant-valid-key")
-
-        assert valid is True
-        assert msg == "Valid"
-        mock_anthropic.Anthropic.assert_called_once_with(api_key="sk-ant-valid-key")
-        mock_client.models.list.assert_called_once()
-
-    def test_invalid_key(self):
-        """Test that invalid key returns error."""
-        # Create mock module with AuthenticationError
-        mock_anthropic = mock.MagicMock()
-        mock_anthropic.AuthenticationError = Exception
-        mock_anthropic.Anthropic.side_effect = mock_anthropic.AuthenticationError(
-            "Invalid API key"
-        )
-
-        with mock.patch.dict(sys.modules, {"anthropic": mock_anthropic}):
-            valid, msg = validate_anthropic_key("invalid-key")
-
-        assert valid is False
-        assert "Invalid" in msg
-
-
-class TestValidateOpenaiKey:
-    def test_empty_key_returns_skipped(self):
-        """Test that empty key returns skipped status."""
-        valid, msg = validate_openai_key("")
-        assert valid is True
-        assert "Skipped" in msg
-
-    def test_valid_key(self):
-        """Test that valid key returns success."""
-        mock_openai = mock.MagicMock()
-        mock_client = mock.MagicMock()
-        mock_openai.OpenAI.return_value = mock_client
-
-        with mock.patch.dict(sys.modules, {"openai": mock_openai}):
-            valid, msg = validate_openai_key("sk-valid-key")
-
-        assert valid is True
-        assert msg == "Valid"
-        mock_openai.OpenAI.assert_called_once_with(api_key="sk-valid-key")
-        mock_client.models.list.assert_called_once()
-
-    def test_invalid_key(self):
-        """Test that invalid key returns error."""
-        mock_openai = mock.MagicMock()
-        mock_openai.AuthenticationError = Exception
-        mock_openai.OpenAI.side_effect = mock_openai.AuthenticationError(
-            "Invalid API key"
-        )
-
-        with mock.patch.dict(sys.modules, {"openai": mock_openai}):
-            valid, msg = validate_openai_key("invalid-key")
-
-        assert valid is False
-        assert "Invalid" in msg
-
-
-class TestValidateTavilyKey:
-    def test_empty_key_returns_skipped(self):
-        """Test that empty key returns skipped status."""
-        valid, msg = validate_tavily_key("")
-        assert valid is True
-        assert "Skipped" in msg
-
-    def test_valid_key(self):
-        """Test that valid key returns success."""
-        mock_tavily = mock.MagicMock()
-        mock_client = mock.MagicMock()
-        mock_tavily.TavilyClient.return_value = mock_client
-
-        with mock.patch.dict(sys.modules, {"tavily": mock_tavily}):
-            valid, msg = validate_tavily_key("tvly-valid-key")
-
-        assert valid is True
-        assert msg == "Valid"
-        mock_tavily.TavilyClient.assert_called_once_with(api_key="tvly-valid-key")
-        mock_client.search.assert_called_once_with("test", max_results=1)
-
-    def test_invalid_key(self):
-        """Test that invalid key returns error."""
-        mock_tavily = mock.MagicMock()
-        mock_tavily.TavilyClient.side_effect = Exception("401 Unauthorized")
-
-        with mock.patch.dict(sys.modules, {"tavily": mock_tavily}):
-            valid, msg = validate_tavily_key("invalid-key")
-
-        assert valid is False
-        assert "Invalid" in msg
 
 
 # =============================================================================

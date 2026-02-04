@@ -7,7 +7,6 @@ workspace settings, and agent parameters. Uses flow-style arrow-key selection UI
 from __future__ import annotations
 
 import os
-from typing import Any
 
 import questionary
 from prompt_toolkit.styles import Style
@@ -23,7 +22,7 @@ from .config import (
     save_config,
     get_config_path,
 )
-from .llm import MODELS, DEFAULT_MODEL
+from .llm import MODELS
 
 console = Console()
 
@@ -538,7 +537,7 @@ def _step_parameters(config: EvoScientistConfig) -> tuple[int, int, bool]:
     """
     # Max concurrent
     max_concurrent_str = questionary.text(
-        f"Max concurrent sub-agents (1-10):",
+        "Max concurrent sub-agents (1-10):",
         default=str(config.max_concurrent),
         style=WIZARD_STYLE,
         validate=lambda x: x.strip() == "" or (x.strip().isdigit() and 1 <= int(x.strip()) <= 10),
@@ -551,7 +550,7 @@ def _step_parameters(config: EvoScientistConfig) -> tuple[int, int, bool]:
 
     # Max iterations
     max_iterations_str = questionary.text(
-        f"Max delegation iterations (1-10):",
+        "Max delegation iterations (1-10):",
         default=str(config.max_iterations),
         style=WIZARD_STYLE,
         validate=lambda x: x.strip() == "" or (x.strip().isdigit() and 1 <= int(x.strip()) <= 10),
