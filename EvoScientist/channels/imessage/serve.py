@@ -71,15 +71,88 @@ class IMessageServer:
         self,
         config: IMessageConfig,
         handler: Callable | None = None,
+        debounce_window: float = 1.0,
     ):
+        """Initialize iMessage server.
+
+        Args:
+            config: iMessage channel configuration.
+            handler: Message handler function. If None, uses echo handler.
+            debounce_window: Time window (seconds) to wait for additional messages
+                before processing. Messages from same sender within this window
+                are merged. Default 1.0s.
+        """
         self.config = config
         self.channel = IMessageChannel(config)
-        self.handler = handler or self._default_handler
+        self.debounce_window = debounce_window
         self._running = False
+
+        # Message buffering for debounce
+        self._message_buffers: dict[str, list[str]] = {}  # sender -> [messages]
+        self._debounce_tasks: dict[str, asyncio.Task] = {}  # sender -> pending task
+        self._processing: set[str] = set()  # senders currently being processed
+
+        if handler:
+            self.handler = handler
+        else:
+            self.handler = self._default_handler
 
     async def _default_handler(self, msg) -> str:
         """Default echo handler."""
         return f"Echo: {msg.content}"
+
+    async def _process_buffered_messages(self, sender: str, metadata: dict | None) -> None:
+        """Process all buffered messages for a sender."""
+        if sender not in self._message_buffers:
+            return
+
+        messages = self._message_buffers.pop(sender, [])
+        self._debounce_tasks.pop(sender, None)
+
+        if not messages:
+            return
+
+        merged_content = "\n".join(messages)
+        logger.info(f"Processing {len(messages)} merged message(s) from {sender}")
+
+        self._processing.add(sender)
+        try:
+            class MergedMessage:
+                def __init__(self, s, c, m):
+                    self.sender = s
+                    self.content = c
+                    self.metadata = m
+
+            merged_msg = MergedMessage(sender, merged_content, metadata)
+            response = await self.handler(merged_msg)
+
+            if response:
+                await self.channel.send(OutgoingMessage(
+                    recipient=sender,
+                    content=response,
+                    metadata=metadata,
+                ))
+        except Exception as e:
+            logger.error(f"Handler error: {e}")
+        finally:
+            self._processing.discard(sender)
+
+    async def _queue_message(self, msg) -> None:
+        """Queue a message for debounced processing."""
+        sender = msg.sender
+
+        if sender not in self._message_buffers:
+            self._message_buffers[sender] = []
+        self._message_buffers[sender].append(msg.content)
+
+        if sender in self._debounce_tasks:
+            self._debounce_tasks[sender].cancel()
+
+        async def debounce_callback():
+            await asyncio.sleep(self.debounce_window)
+            await self._process_buffered_messages(sender, msg.metadata)
+
+        self._debounce_tasks[sender] = asyncio.create_task(debounce_callback())
 
     async def run(self) -> None:
         """Run the server."""
@@ -91,21 +164,16 @@ class IMessageServer:
             logger.info(f"Allowed senders: {self.config.allowed_senders}")
         else:
             logger.info("Allowing all senders")
+        if self.debounce_window > 0:
+            logger.info(f"Message debounce: {self.debounce_window}s")
 
         try:
             async for msg in self.channel.receive():
                 logger.info(f"From {msg.sender}: {msg.content[:50]}...")
-                try:
-                    response = await self.handler(msg)
-                    if response:
-                        await self.channel.send(OutgoingMessage(
-                            recipient=msg.sender,
-                            content=response,
-                            metadata=msg.metadata,
-                        ))
-                except Exception as e:
-                    logger.error(f"Handler error: {e}")
+                await self._queue_message(msg)
         finally:
+            for task in self._debounce_tasks.values():
+                task.cancel()
             await self.channel.stop()
 
     async def stop(self) -> None:
@@ -145,6 +213,12 @@ def parse_args():
         action="store_true",
         help="Use EvoScientist agent as handler (default: echo)",
     )
+    parser.add_argument(
+        "--debounce",
+        type=float,
+        default=1.0,
+        help="Message debounce window in seconds (default: 1.0)",
+    )
     return parser.parse_args()
 
 
@@ -165,7 +239,11 @@ async def async_main():
         handler = create_agent_handler()
         logger.info("Agent loaded")
 
-    server = IMessageServer(config, handler=handler)
+    server = IMessageServer(
+        config,
+        handler=handler,
+        debounce_window=args.debounce,
+    )
 
     loop = asyncio.get_event_loop()
     for sig in (signal.SIGINT, signal.SIGTERM):
