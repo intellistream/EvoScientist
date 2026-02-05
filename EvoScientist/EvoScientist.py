@@ -68,7 +68,7 @@ SYSTEM_PROMPT = get_system_prompt(
 chat_model = init_chat_model(
     model="claude-sonnet-4-5-20250929",
     model_provider="anthropic",
-    thinking={"type": "enabled", "budget_tokens": 2000},
+    # thinking={"type": "enabled", "budget_tokens": 2000},
 )
 
 # Initialize workspace backend based on mode
