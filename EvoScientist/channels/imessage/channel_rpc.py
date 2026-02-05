@@ -306,12 +306,15 @@ class IMessageChannelRpc(Channel):
         for segment in segments:
             params = self._build_send_params(message, segment)
             if not params:
+                logger.error(f"_build_send_params returned None for recipient={message.recipient}, metadata={message.metadata}")
                 return False
 
             try:
+                logger.debug(f"Calling imsg send with params: {params}")
                 await self._client.request("send", params)
             except Exception as e:
                 logger.error(f"Send failed: {e}")
+                logger.error(f"Failed params were: {params}")
                 return False
 
         return True
@@ -325,6 +328,8 @@ class IMessageChannelRpc(Channel):
             "service": self.config.service,
             "region": self.config.region,
         }
+
+        logger.debug(f"Building send params - recipient: {message.recipient}, metadata: {message.metadata}")
 
         # Check metadata for chat targets
         chat_id = message.metadata.get("chat_id")
@@ -356,6 +361,7 @@ class IMessageChannelRpc(Channel):
             logger.error("Cannot send: no recipient or chat target")
             return None
 
+        logger.debug(f"Built send params: {params}")
         return params
 
     async def send_media(

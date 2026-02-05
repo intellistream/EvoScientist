@@ -20,15 +20,14 @@ import asyncio
 import argparse
 import logging
 import signal
-import sys
 from typing import Callable
 
 from . import IMessageChannel, IMessageConfig
 from ..base import OutgoingMessage
 
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
+    level=logging.DEBUG,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     datefmt="%H:%M:%S",
 )
 logger = logging.getLogger(__name__)
@@ -67,7 +66,7 @@ def create_agent_handler(on_thinking: Callable | None = None):
                     if thinking_text:
                         thinking_buffer.append(thinking_text)
                         if len("".join(thinking_buffer)) > 200:
-                            await on_thinking(sender, "".join(thinking_buffer))
+                            await on_thinking(sender, "".join(thinking_buffer), msg.metadata)
                             thinking_buffer.clear()
 
                 elif event_type == "text":
@@ -77,7 +76,7 @@ def create_agent_handler(on_thinking: Callable | None = None):
                     final_content = event.get("content", "") or final_content
 
             if thinking_buffer:
-                await on_thinking(sender, "".join(thinking_buffer))
+                await on_thinking(sender, "".join(thinking_buffer), msg.metadata)
 
             return final_content or "No response"
         else:
@@ -89,7 +88,16 @@ def create_agent_handler(on_thinking: Callable | None = None):
             messages = result.get("messages", [])
             for m in reversed(messages):
                 if hasattr(m, "content") and m.type == "ai":
-                    return m.content
+                    content = m.content
+                    # Handle structured content (thinking mode)
+                    if isinstance(content, list):
+                        text_parts = []
+                        for block in content:
+                            if isinstance(block, dict) and block.get("type") == "text":
+                                text_parts.append(block.get("text", ""))
+                        return "\n".join(text_parts) if text_parts else "No response"
+                    # Handle plain string content
+                    return content
             return "No response"
 
     return handler
@@ -124,6 +132,7 @@ class IMessageServer:
 
         # Message buffering for debounce
         self._message_buffers: dict[str, list[str]] = {}  # sender -> [messages]
+        self._message_metadata: dict[str, dict] = {}  # sender -> metadata (from first message)
         self._debounce_tasks: dict[str, asyncio.Task] = {}  # sender -> pending task
         self._processing: set[str] = set()  # senders currently being processed
 
@@ -136,12 +145,13 @@ class IMessageServer:
         """Default echo handler."""
         return f"Echo: {msg.content}"
 
-    async def _process_buffered_messages(self, sender: str, metadata: dict | None) -> None:
+    async def _process_buffered_messages(self, sender: str) -> None:
         """Process all buffered messages for a sender."""
         if sender not in self._message_buffers:
             return
 
         messages = self._message_buffers.pop(sender, [])
+        metadata = self._message_metadata.pop(sender, None)
         self._debounce_tasks.pop(sender, None)
 
         if not messages:
@@ -149,6 +159,7 @@ class IMessageServer:
 
         merged_content = "\n".join(messages)
         logger.info(f"Processing {len(messages)} merged message(s) from {sender}")
+        logger.debug(f"Using metadata: {metadata}")
 
         self._processing.add(sender)
         try:
@@ -159,6 +170,7 @@ class IMessageServer:
                     self.metadata = m
 
             merged_msg = MergedMessage(sender, merged_content, metadata)
+            logger.debug(f"Calling handler with metadata: {metadata}")
             response = await self.handler(merged_msg)
 
             if response:
@@ -178,6 +190,9 @@ class IMessageServer:
 
         if sender not in self._message_buffers:
             self._message_buffers[sender] = []
+            # Save metadata from first message (contains chat_id/chat_guid for replies)
+            self._message_metadata[sender] = msg.metadata
+            logger.debug(f"Saved metadata for {sender}: {msg.metadata}")
         self._message_buffers[sender].append(msg.content)
 
         if sender in self._debounce_tasks:
@@ -185,19 +200,21 @@ class IMessageServer:
 
         async def debounce_callback():
             await asyncio.sleep(self.debounce_window)
-            await self._process_buffered_messages(sender, msg.metadata)
+            await self._process_buffered_messages(sender)
 
         self._debounce_tasks[sender] = asyncio.create_task(debounce_callback())
 
-    async def send_thinking_message(self, sender: str, thinking: str) -> None:
+    async def send_thinking_message(self, sender: str, thinking: str, metadata: dict | None = None) -> None:
         """Send thinking content as intermediate message."""
         if not self.send_thinking:
             return
 
+        logger.debug(f"Sending thinking to {sender} with metadata: {metadata}")
         content = f"[Thinking...]\n{thinking}"
         await self.channel.send(OutgoingMessage(
             recipient=sender,
             content=content,
+            metadata=metadata or {},
         ))
         logger.debug(f"Sent thinking to {sender}: {thinking[:50]}...")
 
