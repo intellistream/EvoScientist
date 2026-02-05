@@ -1,7 +1,7 @@
 """Skill installation and management for EvoScientist.
 
 This module provides functions for installing, listing, and uninstalling user skills.
-Skills are installed to USER_SKILLS_DIR (~/.evoscientist/workspace/skills/).
+Skills are installed to USER_SKILLS_DIR (./workspace/skills/).
 
 Supported installation sources:
 - Local directory paths

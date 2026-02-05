@@ -18,9 +18,8 @@ def _env_path(key: str) -> Path | None:
     return _expand(value)
 
 
-STATE_ROOT = _env_path("EVOSCIENTIST_HOME") or (Path.cwd() / ".evoscientist")
-
-WORKSPACE_ROOT = _env_path("EVOSCIENTIST_WORKSPACE_DIR") or (STATE_ROOT / "workspace")
+# Workspace root: directly under cwd (no hidden .evoscientist layer)
+WORKSPACE_ROOT = _env_path("EVOSCIENTIST_WORKSPACE_DIR") or (Path.cwd() / "workspace")
 
 RUNS_DIR = _env_path("EVOSCIENTIST_RUNS_DIR") or (WORKSPACE_ROOT / "runs")
 MEMORY_DIR = _env_path("EVOSCIENTIST_MEMORY_DIR") or (WORKSPACE_ROOT / "memory")

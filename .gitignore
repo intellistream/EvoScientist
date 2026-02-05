@@ -22,7 +22,7 @@ venv/
 .claude/
 .cursor/
 .cursorrules
-.evoscientist/
+.ruff_cache/
 
 # Project specific
 .langgraph_api/
