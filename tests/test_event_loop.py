@@ -2,7 +2,7 @@
 
 import asyncio
 import pytest
-from unittest.mock import Mock, AsyncMock, patch
+from unittest.mock import Mock, patch
 
 from EvoScientist.stream.display import _get_event_loop, _create_event_loop
 
