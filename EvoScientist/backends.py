@@ -3,11 +3,13 @@
 import os
 import re
 import subprocess
+import uuid
 from pathlib import Path
 
 from deepagents.backends import FilesystemBackend
 from deepagents.backends.filesystem import WriteResult, EditResult
 from deepagents.backends.protocol import (
+    BackendProtocol,
     ExecuteResponse,
     FileDownloadResponse,
     FileUploadResponse,
@@ -132,7 +134,7 @@ class ReadOnlyFilesystemBackend(FilesystemBackend):
         )
 
 
-class MergedReadOnlyBackend:
+class MergedReadOnlyBackend(BackendProtocol):
     """Read-only backend that merges two directories.
 
     Reads from *primary* first (user skills in workspace/skills/),
@@ -205,27 +207,7 @@ class MergedReadOnlyBackend:
             error="This directory is read-only. Edit operations are not permitted here."
         )
 
-    # -- async variants (required by middleware) --
-
-    async def aread(self, file_path: str, offset: int = 0, limit: int = 2000) -> str:
-        return self.read(file_path, offset, limit)
-
-    async def als_info(self, path: str = "/") -> list:
-        return self.ls_info(path)
-
-    async def agrep_raw(self, pattern: str, path: str | None = None, glob: str | None = None) -> list:
-        return self.grep_raw(pattern, path, glob)
-
-    async def aglob_info(self, pattern: str, path: str = "/") -> list:
-        return self.glob_info(pattern, path)
-
-    async def awrite(self, file_path: str, content: str) -> WriteResult:
-        return self.write(file_path, content)
-
-    async def aedit(self, file_path: str, old_string: str, new_string: str, replace_all: bool = False) -> EditResult:
-        return self.edit(file_path, old_string, new_string, replace_all)
-
-    # -- download / upload (required by BackendProtocol) --
+    # -- download / upload --
 
     def download_files(self, paths: list[str]) -> list[FileDownloadResponse]:
         """Download files, trying primary then secondary."""
@@ -237,17 +219,11 @@ class MergedReadOnlyBackend:
             responses.append(resp)
         return responses
 
-    async def adownload_files(self, paths: list[str]) -> list[FileDownloadResponse]:
-        return self.download_files(paths)
-
     def upload_files(self, files: list[tuple[str, bytes]]) -> list[FileUploadResponse]:
         return [
             FileUploadResponse(path=path, error="permission_denied")
             for path, _ in files
         ]
-
-    async def aupload_files(self, files: list[tuple[str, bytes]]) -> list[FileUploadResponse]:
-        return self.upload_files(files)
 
 
 class CustomSandboxBackend(FilesystemBackend, SandboxBackendProtocol):
@@ -269,6 +245,9 @@ class CustomSandboxBackend(FilesystemBackend, SandboxBackendProtocol):
         working_dir: str | None = None,
         timeout: int = 300,
         shell: str = "/bin/bash",
+        max_output_bytes: int = 100_000,
+        env: dict[str, str] | None = None,
+        inherit_env: bool = True,
     ):
         """
         Initialize custom sandbox backend.
@@ -279,16 +258,32 @@ class CustomSandboxBackend(FilesystemBackend, SandboxBackendProtocol):
             working_dir: Working directory for command execution (defaults to root_dir)
             timeout: Command execution timeout in seconds
             shell: Shell program to use
+            max_output_bytes: Max output size before truncation (default 100KB)
+            env: Extra environment variables for subprocess
+            inherit_env: Whether to inherit parent process env (default True)
         """
         super().__init__(root_dir=root_dir, virtual_mode=virtual_mode)
 
+        self._sandbox_id = f"evosci-{uuid.uuid4().hex[:8]}"
         self.working_dir = working_dir or root_dir
         self.timeout = timeout
         self.shell = shell
         self.virtual_mode = virtual_mode
+        self._max_output_bytes = max_output_bytes
+
+        # Build subprocess environment
+        if inherit_env:
+            self._env = {**os.environ, **(env or {})}
+        else:
+            self._env = dict(env) if env else {}
 
         # Ensure working directory exists
         os.makedirs(self.working_dir, exist_ok=True)
+
+    @property
+    def id(self) -> str:
+        """Unique identifier for the sandbox backend instance."""
+        return self._sandbox_id
 
     def _resolve_path(self, key: str) -> Path:
         """Resolve path with sanitization to prevent nested directories.
@@ -359,18 +354,30 @@ class CustomSandboxBackend(FilesystemBackend, SandboxBackendProtocol):
                 capture_output=True,
                 text=True,
                 timeout=self.timeout,
+                env=self._env,
             )
 
-            output = ""
+            output_parts = []
             if result.stdout:
-                output += result.stdout
+                output_parts.append(result.stdout)
             if result.stderr:
-                output += result.stderr
+                stderr_lines = result.stderr.strip().split("\n")
+                output_parts.extend(f"[stderr] {line}" for line in stderr_lines)
+            output = "\n".join(output_parts) if output_parts else ""
+
+            if result.returncode != 0:
+                output = f"{output.rstrip()}\n\nExit code: {result.returncode}"
+
+            truncated = False
+            if len(output) > self._max_output_bytes:
+                output = output[:self._max_output_bytes]
+                output += f"\n\n... Output truncated at {self._max_output_bytes} bytes."
+                truncated = True
 
             return ExecuteResponse(
                 output=output,
                 exit_code=result.returncode,
-                truncated=False,
+                truncated=truncated,
             )
 
         except subprocess.TimeoutExpired:

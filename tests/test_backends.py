@@ -1,6 +1,7 @@
 """Tests for EvoScientist/backends.py — validate_command, path conversion, resolve_path."""
 
 
+import re
 
 from EvoScientist.backends import (
     validate_command,
@@ -118,3 +119,90 @@ class TestResolvePath:
         backend = CustomSandboxBackend(root_dir=tmp_workspace, virtual_mode=True)
         resolved = backend._resolve_path("/src/main.py")
         assert str(resolved).endswith("src/main.py")
+
+
+# === CustomSandboxBackend.id ===
+
+class TestSandboxId:
+    def test_sandbox_has_id(self, tmp_workspace):
+        backend = CustomSandboxBackend(root_dir=tmp_workspace, virtual_mode=True)
+        assert isinstance(backend.id, str)
+        assert backend.id.startswith("evosci-")
+        assert len(backend.id) == len("evosci-") + 8
+
+    def test_sandbox_id_is_stable(self, tmp_workspace):
+        backend = CustomSandboxBackend(root_dir=tmp_workspace, virtual_mode=True)
+        assert backend.id == backend.id  # same instance → same id
+
+    def test_sandbox_id_unique(self, tmp_workspace):
+        b1 = CustomSandboxBackend(root_dir=tmp_workspace, virtual_mode=True)
+        b2 = CustomSandboxBackend(root_dir=tmp_workspace, virtual_mode=True)
+        assert b1.id != b2.id
+
+    def test_sandbox_id_hex_suffix(self, tmp_workspace):
+        backend = CustomSandboxBackend(root_dir=tmp_workspace, virtual_mode=True)
+        suffix = backend.id[len("evosci-"):]
+        assert re.fullmatch(r"[0-9a-f]{8}", suffix)
+
+
+# === execute() output truncation ===
+
+class TestExecuteTruncation:
+    def test_execute_truncates_large_output(self, tmp_workspace):
+        backend = CustomSandboxBackend(
+            root_dir=tmp_workspace, working_dir=tmp_workspace,
+            virtual_mode=True, max_output_bytes=100,
+        )
+        # Generate output larger than 100 bytes
+        resp = backend.execute("python3 -c \"print('A' * 200)\"")
+        assert resp.truncated is True
+        assert "... Output truncated at 100 bytes" in resp.output
+        # Output body (before truncation message) should be ≤ 100 bytes
+        before_marker = resp.output.split("\n\n... Output truncated")[0]
+        assert len(before_marker) <= 100
+
+    def test_execute_no_truncation_small_output(self, tmp_workspace):
+        backend = CustomSandboxBackend(
+            root_dir=tmp_workspace, working_dir=tmp_workspace,
+            virtual_mode=True, max_output_bytes=100_000,
+        )
+        resp = backend.execute("echo hello")
+        assert resp.truncated is False
+        assert "truncated" not in resp.output.lower()
+
+
+# === execute() stderr attribution ===
+
+class TestExecuteStderr:
+    def test_execute_stderr_attribution(self, tmp_workspace):
+        backend = CustomSandboxBackend(
+            root_dir=tmp_workspace, working_dir=tmp_workspace, virtual_mode=True,
+        )
+        resp = backend.execute("python3 -c \"import sys; sys.stderr.write('warning\\n')\"")
+        assert "[stderr] warning" in resp.output
+
+    def test_execute_nonzero_exit_code_in_output(self, tmp_workspace):
+        backend = CustomSandboxBackend(
+            root_dir=tmp_workspace, working_dir=tmp_workspace, virtual_mode=True,
+        )
+        resp = backend.execute("python3 -c \"raise SystemExit(42)\"")
+        assert resp.exit_code == 42
+        assert "Exit code: 42" in resp.output
+
+    def test_execute_mixed_stdout_stderr(self, tmp_workspace):
+        backend = CustomSandboxBackend(
+            root_dir=tmp_workspace, working_dir=tmp_workspace, virtual_mode=True,
+        )
+        resp = backend.execute(
+            "python3 -c \"import sys; print('out'); sys.stderr.write('err\\n')\""
+        )
+        assert "out" in resp.output
+        assert "[stderr] err" in resp.output
+
+    def test_execute_success_no_exit_code(self, tmp_workspace):
+        backend = CustomSandboxBackend(
+            root_dir=tmp_workspace, working_dir=tmp_workspace, virtual_mode=True,
+        )
+        resp = backend.execute("echo ok")
+        assert resp.exit_code == 0
+        assert "Exit code:" not in resp.output
