@@ -1,11 +1,11 @@
 ---
 name: find-skills
-description: Helps users discover and install agent skills when they ask questions like "how do I do X", "find a skill for X", or express interest in extending capabilities. Uses a non-interactive installer script suitable for automated agents.
+description: Helps users discover agent skills from the open ecosystem. Searches skills.sh and presents options for installation via the built-in skill_manager tool.
 ---
 
 # Find Skills
 
-This skill helps you discover and install skills from the open agent skills ecosystem.
+This skill helps you discover skills from the open agent skills ecosystem.
 
 ## When to Use This Skill
 
@@ -45,71 +45,14 @@ When you find relevant skills, present them to the user with:
 1. The skill name and what it does
 2. A link to learn more on skills.sh
 
-Ask the user which skill(s) they want to install. All skills are installed to `./skills/` in the current working directory.
+Ask the user which skill(s) they want to install.
 
-## Step 3: Install with the Script
+## Step 3: Install
 
-**IMPORTANT: Do NOT use `npx -y skills add` for installation** — it requires interactive prompts.
+Use the built-in `skill_manager` tool to install:
 
-Use the bundled installer script instead:
-
-```bash
-python /skills/find-skills/scripts/install_skill.py --url <github_url>
 ```
-
-### Install Commands
-
-**From a GitHub URL** (most common — copy the URL from search results):
-```bash
-python /skills/find-skills/scripts/install_skill.py \
-  --url https://github.com/owner/repo/tree/main/skill-name
-```
-
-**From skills.sh shorthand** (owner/repo@skill):
-```bash
-python /skills/find-skills/scripts/install_skill.py \
-  --url vercel-labs/agent-skills@vercel-react-best-practices
-```
-
-**From repo + path** (install specific skills from a multi-skill repo):
-```bash
-# Single skill
-python /skills/find-skills/scripts/install_skill.py \
-  --repo owner/repo --path skill-name
-
-# Multiple skills from same repo
-python /skills/find-skills/scripts/install_skill.py \
-  --repo owner/repo --path skill-a --path skill-b
-```
-
-**With a specific git branch or tag**:
-```bash
-python /skills/find-skills/scripts/install_skill.py \
-  --repo owner/repo --path skill-name --ref v2.0
-```
-
-### Installer Options
-
-| Option | Description |
-|--------|-------------|
-| `--url` | GitHub URL or owner/repo@skill shorthand |
-| `--repo` | GitHub repo (owner/repo format) |
-| `--path` | Path to skill inside repo (repeatable) |
-| `--ref` | Git branch or tag |
-| `--dest` | Custom destination directory (default: `./skills`) |
-
-## Step 4: Confirm Installation
-
-After installation, verify by listing the skills directory:
-
-```bash
-ls /skills/   # all skills (system + user merged)
-```
-
-Then read the installed skill's SKILL.md to confirm it loaded correctly:
-
-```bash
-read_file /skills/<skill-name>/SKILL.md
+skill_manager(action="install", source="owner/repo@skill-name")
 ```
 
 ## Common Skill Categories

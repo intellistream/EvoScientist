@@ -13,23 +13,30 @@ pip install "evoscientist[mcp]"
 Edit `~/.config/evoscientist/mcp.yaml`:
 
 ```yaml
-# Local process (stdio) — most common
-my-server:
+# Sequential Thinking — structured reasoning and problem decomposition
+sequential-thinking:
   transport: stdio
   command: npx
-  args: ["-y", "@modelcontextprotocol/server-github"]
-  env:
-    GITHUB_PERSONAL_ACCESS_TOKEN: "${GITHUB_TOKEN}"
+  args: ["-y", "@modelcontextprotocol/server-sequential-thinking"]
 
-# Remote server (http/sse/websocket)
-my-api:
-  transport: http
-  url: "http://localhost:8080/mcp"
-  headers:
-    Authorization: "Bearer ${API_KEY}"
+# Context7 — up-to-date library documentation
+context7:
+  transport: stdio
+  command: npx
+  args: ["-y", "@upstash/context7-mcp@latest"]
+
+# Brave Search — web, image, video, news search (requires API key)
+brave-search:
+  transport: stdio
+  command: npx
+  args: ["-y", "@brave/brave-search-mcp-server"]
+  env:
+    BRAVE_API_KEY: "${BRAVE_API_KEY}"
 ```
 
 Then restart the agent (`/new` in interactive mode).
+
+More servers: [MCP Server Directory](https://github.com/modelcontextprotocol/servers)
 
 ## Config Fields
 
@@ -74,6 +81,21 @@ Available agents: `main`, `planner-agent`, `research-agent`, `code-agent`, `debu
 ```
 
 Or from the terminal: `EvoSci mcp list`, `EvoSci mcp add ...`, etc.
+
+Examples:
+
+```bash
+# Sequential Thinking
+EvoSci mcp add sequential-thinking stdio npx -- -y "@modelcontextprotocol/server-sequential-thinking"
+
+# Context7 with tool routing
+EvoSci mcp add context7 stdio npx -e main,research-agent,code-agent -- -y "@upstash/context7-mcp@latest"
+
+# Brave Search with env var
+EvoSci mcp add brave-search stdio npx --env "BRAVE_API_KEY=your-key" -- -y "@brave/brave-search-mcp-server"
+```
+
+Use `--` to separate MCP server args from CLI options. Put flags like `-e`, `--env` before `--`. Quote `@`-scoped package names.
 
 ## Environment Variables
 

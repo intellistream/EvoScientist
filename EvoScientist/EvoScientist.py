@@ -186,7 +186,7 @@ prompt_refs = {
 
 base_middleware = [
     create_memory_middleware(MEMORY_DIR, extraction_model=chat_model),
-    create_skills_middleware(SKILLS_DIR, user_skills_dir=USER_SKILLS_DIR),
+    create_skills_middleware(backend),
 ]
 
 # Default agent (no checkpointer) — used by langgraph dev / LangSmith / notebooks.
@@ -234,7 +234,7 @@ def create_cli_agent(workspace_dir: str | None = None):
 
     mw = [
         create_memory_middleware(MEMORY_DIR, extraction_model=chat_model),
-        create_skills_middleware(SKILLS_DIR, user_skills_dir=USER_SKILLS_DIR),
+        create_skills_middleware(be),
     ]
 
     # Re-load MCP tools from current config (picks up /mcp add changes)

@@ -1,6 +1,6 @@
 <!-- Add logo here -->
 <h1 align="center">
-  <!-- <img src="./assets/CCD_icon_logo.png" alt="CCD Logo" height="27" style="position: relative; top: -2px;"/> -->
+  <img src="./assets/EvoScientist_logo.png" alt="EvoScientist Logo" height="27" style="position: relative; top: 1px;"/>
   <strong>EvoScientist</strong>
 </h1>
 

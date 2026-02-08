@@ -234,7 +234,15 @@ def _install_from_local(source: str, dest_dir: str) -> dict:
     source_path = Path(source).expanduser().resolve()
 
     if not source_path.exists():
-        return {"success": False, "error": f"Path does not exist: {source}"}
+        # Fallback: try resolving as a virtual workspace path
+        from ..paths import resolve_virtual_path
+
+        try:
+            source_path = resolve_virtual_path(source)
+        except Exception:
+            pass
+        if not source_path.exists():
+            return {"success": False, "error": f"Path does not exist: {source}"}
 
     if not source_path.is_dir():
         return {"success": False, "error": f"Not a directory: {source}"}
