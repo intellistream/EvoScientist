@@ -878,18 +878,36 @@ def _install_pip_package(package: str) -> bool:
 def _step_mcp_servers() -> list[str]:
     """Step 8: Optionally install recommended MCP servers.
 
-    Shows a checkbox list of recommended servers. Selected ones are added
-    to the user MCP config via ``add_mcp_server()``.
+    Shows a checkbox list of recommended servers. Already-configured servers
+    are shown as disabled so users don't accidentally override them.
+    Selected ones are added to the user MCP config via ``add_mcp_server()``.
 
     Handles env-key prompts, pip package installs, and URL-based servers.
 
     Returns:
         List of server names that were installed.
     """
-    choices = [
-        Choice(title=srv["label"], value=srv["name"])
-        for srv in _RECOMMENDED_MCP_SERVERS
-    ]
+    from .mcp.client import _load_user_config, add_mcp_server
+
+    existing_config = _load_user_config()
+
+    choices = []
+    for srv in _RECOMMENDED_MCP_SERVERS:
+        if srv["name"] in existing_config:
+            choices.append(
+                Choice(
+                    title=srv["label"],
+                    value=srv["name"],
+                    disabled="already configured",
+                )
+            )
+        else:
+            choices.append(Choice(title=srv["label"], value=srv["name"]))
+
+    all_installed = all(srv["name"] in existing_config for srv in _RECOMMENDED_MCP_SERVERS)
+    if all_installed:
+        console.print("  [green]✓ All recommended MCP servers are already configured.[/green]")
+        return []
 
     selected = questionary.checkbox(
         "Install recommended MCP servers:",
@@ -914,8 +932,6 @@ def _step_mcp_servers() -> list[str]:
     )
     if needs_npx:
         _ensure_npx("some MCP servers require Node.js")
-
-    from .mcp.client import add_mcp_server
 
     installed = []
     for name in selected:
