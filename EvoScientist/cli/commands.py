@@ -41,7 +41,7 @@ def onboard(
     Guides you through configuring API keys, model selection,
     workspace settings, and agent parameters.
     """
-    from ..onboard import run_onboard
+    from ..config import run_onboard
     run_onboard(skip_validation=skip_validation)
 
 
@@ -194,7 +194,7 @@ def mcp_add(
     target: str = typer.Argument(..., help="Command (stdio) or URL (http/sse)"),
     args: Optional[list[str]] = typer.Argument(None, help="Extra args for stdio command"),
     transport: Optional[str] = typer.Option(None, "--transport", "-T", help="Transport type (default: auto-detect)"),
-    tools: Optional[str] = typer.Option(None, "--tools", "-t", help="Comma-separated tool allowlist"),
+    tools: Optional[str] = typer.Option(None, "--tools", "-t", help="Comma-separated tool allowlist (supports wildcards: *_exa, read_*)"),
     expose_to: Optional[str] = typer.Option(None, "--expose-to", "-e", help="Comma-separated target agents"),
     header: Optional[list[str]] = typer.Option(None, "--header", "-H", help="HTTP header as Key:Value (repeatable)"),
     env: Optional[list[str]] = typer.Option(None, "--env", help="Env var as KEY=VALUE for stdio (repeatable)"),
@@ -244,7 +244,7 @@ def mcp_edit(
     transport: Optional[str] = typer.Option(None, "--transport", help="New transport type"),
     command: Optional[str] = typer.Option(None, "--command", help="New command (stdio)"),
     url: Optional[str] = typer.Option(None, "--url", help="New URL (http/sse/websocket)"),
-    tools: Optional[str] = typer.Option(None, "--tools", "-t", help="Comma-separated tool allowlist ('none' to clear)"),
+    tools: Optional[str] = typer.Option(None, "--tools", "-t", help="Comma-separated tool allowlist, supports wildcards ('none' to clear)"),
     expose_to: Optional[str] = typer.Option(None, "--expose-to", "-e", help="Comma-separated target agents ('none' to clear)"),
     header: Optional[list[str]] = typer.Option(None, "--header", "-H", help="HTTP header as Key:Value (repeatable)"),
     env: Optional[list[str]] = typer.Option(None, "--env", help="Env var as KEY=VALUE for stdio (repeatable)"),

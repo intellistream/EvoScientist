@@ -265,13 +265,17 @@ Finding one with context [1]. Another insight [2].
 # =============================================================================
 
 def get_system_prompt(max_concurrent: int = 3, max_iterations: int = 3) -> str:
-    """Generate the complete system prompt with configured limits."""
+    """Generate the complete system prompt with configured limits.
+
+    Args:
+        max_concurrent: Maximum number of concurrent sub-agents.
+        max_iterations: Maximum number of delegation rounds.
+
+    Returns:
+        Combined system prompt string.
+    """
     delegation = DELEGATION_STRATEGY.format(
         max_concurrent=max_concurrent,
         max_iterations=max_iterations,
     )
     return EXPERIMENT_WORKFLOW + "\n" + delegation
-
-
-# Default export (backward compatible)
-SYSTEM_PROMPT = get_system_prompt()

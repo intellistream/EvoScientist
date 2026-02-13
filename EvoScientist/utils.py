@@ -17,7 +17,14 @@ console = Console()
 
 
 def format_message_content(message):
-    """Convert message content to displayable string."""
+    """Convert message content to displayable string.
+
+    Args:
+        message: A LangChain message object with content attribute.
+
+    Returns:
+        Formatted string representation of the message content.
+    """
     parts = []
     tool_calls_processed = False
 
@@ -52,7 +59,11 @@ def format_message_content(message):
 
 
 def format_messages(messages):
-    """Format and display a list of messages with Rich formatting."""
+    """Format and display a list of messages with Rich formatting.
+
+    Args:
+        messages: List of LangChain message objects to display.
+    """
     for m in messages:
         msg_type = m.__class__.__name__.replace("Message", "")
         content = format_message_content(m)
@@ -66,10 +77,6 @@ def format_messages(messages):
         else:
             console.print(Panel(content, title=f"📝 {msg_type}", border_style="white"))
 
-
-def format_message(messages):
-    """Alias for format_messages for backward compatibility."""
-    return format_messages(messages)
 
 
 def show_prompt(prompt_text: str, title: str = "Prompt", border_style: str = "blue"):

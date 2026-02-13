@@ -1,11 +1,11 @@
 """Tests for EvoScientist onboarding wizard."""
 
 import subprocess
-from unittest import mock
+from unittest.mock import patch, Mock, MagicMock
 
 import pytest
 
-from EvoScientist.onboard import (
+from EvoScientist.config.onboard import (
     IntegerValidator,
     ChoiceValidator,
     STEPS,
@@ -207,11 +207,11 @@ class TestChoiceValidator:
 class TestStepProvider:
     def test_returns_selected_provider(self):
         """Test that _step_provider returns selected provider."""
-        from EvoScientist.onboard import _step_provider
+        from EvoScientist.config.onboard import _step_provider
 
         config = EvoScientistConfig()
 
-        with mock.patch("EvoScientist.onboard.questionary") as mock_q:
+        with patch("EvoScientist.config.onboard.questionary") as mock_q:
             mock_q.select.return_value.ask.return_value = "anthropic"
             result = _step_provider(config)
 
@@ -220,11 +220,11 @@ class TestStepProvider:
 
     def test_raises_keyboard_interrupt_on_cancel(self):
         """Test that _step_provider raises KeyboardInterrupt on cancel."""
-        from EvoScientist.onboard import _step_provider
+        from EvoScientist.config.onboard import _step_provider
 
         config = EvoScientistConfig()
 
-        with mock.patch("EvoScientist.onboard.questionary") as mock_q:
+        with patch("EvoScientist.config.onboard.questionary") as mock_q:
             mock_q.select.return_value.ask.return_value = None
             with pytest.raises(KeyboardInterrupt):
                 _step_provider(config)
@@ -233,11 +233,11 @@ class TestStepProvider:
 class TestStepModel:
     def test_returns_selected_model(self):
         """Test that _step_model returns selected model."""
-        from EvoScientist.onboard import _step_model
+        from EvoScientist.config.onboard import _step_model
 
         config = EvoScientistConfig()
 
-        with mock.patch("EvoScientist.onboard.questionary") as mock_q:
+        with patch("EvoScientist.config.onboard.questionary") as mock_q:
             mock_q.select.return_value.ask.return_value = "claude-sonnet-4-5"
             result = _step_model(config, "anthropic")
 
@@ -245,11 +245,11 @@ class TestStepModel:
 
     def test_raises_keyboard_interrupt_on_cancel(self):
         """Test that _step_model raises KeyboardInterrupt on cancel."""
-        from EvoScientist.onboard import _step_model
+        from EvoScientist.config.onboard import _step_model
 
         config = EvoScientistConfig()
 
-        with mock.patch("EvoScientist.onboard.questionary") as mock_q:
+        with patch("EvoScientist.config.onboard.questionary") as mock_q:
             mock_q.select.return_value.ask.return_value = None
             with pytest.raises(KeyboardInterrupt):
                 _step_model(config, "anthropic")
@@ -258,11 +258,11 @@ class TestStepModel:
 class TestStepWorkspace:
     def test_returns_mode_and_empty_workdir(self):
         """Test workspace step with no custom directory."""
-        from EvoScientist.onboard import _step_workspace
+        from EvoScientist.config.onboard import _step_workspace
 
         config = EvoScientistConfig()
 
-        with mock.patch("EvoScientist.onboard.questionary") as mock_q:
+        with patch("EvoScientist.config.onboard.questionary") as mock_q:
             mock_q.select.return_value.ask.return_value = "daemon"
             mock_q.confirm.return_value.ask.return_value = False  # No custom dir
             result = _step_workspace(config)
@@ -271,11 +271,11 @@ class TestStepWorkspace:
 
     def test_returns_mode_and_custom_workdir(self):
         """Test workspace step with custom directory."""
-        from EvoScientist.onboard import _step_workspace
+        from EvoScientist.config.onboard import _step_workspace
 
         config = EvoScientistConfig()
 
-        with mock.patch("EvoScientist.onboard.questionary") as mock_q:
+        with patch("EvoScientist.config.onboard.questionary") as mock_q:
             mock_q.select.return_value.ask.return_value = "run"
             mock_q.confirm.return_value.ask.return_value = True  # Use custom dir
             mock_q.text.return_value.ask.return_value = "/custom/path"
@@ -287,14 +287,14 @@ class TestStepWorkspace:
 class TestValidateImessage:
     def test_valid_when_cli_found_with_rpc(self):
         """Test validate_imessage returns valid when imsg CLI found and RPC works."""
-        from EvoScientist.onboard import validate_imessage
+        from EvoScientist.config.onboard import validate_imessage
 
-        version_result = mock.Mock(returncode=0, stdout="imsg 1.2.3")
-        rpc_result = mock.Mock(returncode=0)
+        version_result = Mock(returncode=0, stdout="imsg 1.2.3")
+        rpc_result = Mock(returncode=0)
 
-        with mock.patch("EvoScientist.onboard.sys") as mock_sys, \
-             mock.patch("EvoScientist.channels.imessage.probe.shutil") as mock_shutil, \
-             mock.patch("EvoScientist.onboard.subprocess") as mock_sub:
+        with patch("EvoScientist.config.onboard.sys") as mock_sys, \
+             patch("EvoScientist.channels.imessage.probe.shutil") as mock_shutil, \
+             patch("EvoScientist.config.onboard.subprocess") as mock_sub:
             mock_sys.platform = "darwin"
             mock_shutil.which.return_value = "/opt/homebrew/bin/imsg"
             mock_sub.run.side_effect = [version_result, rpc_result]
@@ -306,10 +306,10 @@ class TestValidateImessage:
 
     def test_invalid_when_cli_not_found(self):
         """Test validate_imessage returns not_installed when imsg CLI missing."""
-        from EvoScientist.onboard import validate_imessage
+        from EvoScientist.config.onboard import validate_imessage
 
-        with mock.patch("EvoScientist.onboard.sys") as mock_sys, \
-             mock.patch("EvoScientist.channels.imessage.probe.shutil") as mock_shutil:
+        with patch("EvoScientist.config.onboard.sys") as mock_sys, \
+             patch("EvoScientist.channels.imessage.probe.shutil") as mock_shutil:
             mock_sys.platform = "darwin"
             mock_shutil.which.return_value = None
             valid, msg = validate_imessage()
@@ -319,9 +319,9 @@ class TestValidateImessage:
 
     def test_invalid_on_non_macos(self):
         """Test validate_imessage returns invalid on non-macOS."""
-        from EvoScientist.onboard import validate_imessage
+        from EvoScientist.config.onboard import validate_imessage
 
-        with mock.patch("EvoScientist.onboard.sys") as mock_sys:
+        with patch("EvoScientist.config.onboard.sys") as mock_sys:
             mock_sys.platform = "linux"
             valid, msg = validate_imessage()
 
@@ -330,14 +330,14 @@ class TestValidateImessage:
 
     def test_invalid_when_rpc_not_supported(self):
         """Test validate_imessage returns invalid when RPC check fails."""
-        from EvoScientist.onboard import validate_imessage
+        from EvoScientist.config.onboard import validate_imessage
 
-        version_result = mock.Mock(returncode=0, stdout="imsg 0.1.0")
-        rpc_result = mock.Mock(returncode=1)
+        version_result = Mock(returncode=0, stdout="imsg 0.1.0")
+        rpc_result = Mock(returncode=1)
 
-        with mock.patch("EvoScientist.onboard.sys") as mock_sys, \
-             mock.patch("EvoScientist.channels.imessage.probe.shutil") as mock_shutil, \
-             mock.patch("EvoScientist.onboard.subprocess") as mock_sub:
+        with patch("EvoScientist.config.onboard.sys") as mock_sys, \
+             patch("EvoScientist.channels.imessage.probe.shutil") as mock_shutil, \
+             patch("EvoScientist.config.onboard.subprocess") as mock_sub:
             mock_sys.platform = "darwin"
             mock_shutil.which.return_value = "/usr/local/bin/imsg"
             mock_sub.run.side_effect = [version_result, rpc_result]
@@ -350,10 +350,10 @@ class TestValidateImessage:
 class TestInstallImsg:
     def test_install_success(self):
         """Test _install_imsg returns True on success."""
-        from EvoScientist.onboard import _install_imsg
+        from EvoScientist.config.onboard import _install_imsg
 
-        with mock.patch("EvoScientist.onboard.subprocess") as mock_sub:
-            mock_sub.run.return_value = mock.Mock(returncode=0)
+        with patch("EvoScientist.config.onboard.subprocess") as mock_sub:
+            mock_sub.run.return_value = Mock(returncode=0)
             mock_sub.TimeoutExpired = subprocess.TimeoutExpired
             result = _install_imsg()
 
@@ -361,10 +361,10 @@ class TestInstallImsg:
 
     def test_install_brew_not_found(self):
         """Test _install_imsg handles missing Homebrew."""
-        from EvoScientist.onboard import _install_imsg
+        from EvoScientist.config.onboard import _install_imsg
 
-        with mock.patch("EvoScientist.onboard.subprocess") as mock_sub, \
-             mock.patch("EvoScientist.onboard.console"):
+        with patch("EvoScientist.config.onboard.subprocess") as mock_sub, \
+             patch("EvoScientist.config.onboard.console"):
             mock_sub.run.side_effect = FileNotFoundError()
             mock_sub.TimeoutExpired = subprocess.TimeoutExpired
             result = _install_imsg()
@@ -373,10 +373,10 @@ class TestInstallImsg:
 
     def test_install_failure(self):
         """Test _install_imsg returns False on non-zero exit."""
-        from EvoScientist.onboard import _install_imsg
+        from EvoScientist.config.onboard import _install_imsg
 
-        with mock.patch("EvoScientist.onboard.subprocess") as mock_sub:
-            mock_sub.run.return_value = mock.Mock(returncode=1)
+        with patch("EvoScientist.config.onboard.subprocess") as mock_sub:
+            mock_sub.run.return_value = Mock(returncode=1)
             mock_sub.TimeoutExpired = subprocess.TimeoutExpired
             result = _install_imsg()
 
@@ -386,32 +386,32 @@ class TestInstallImsg:
 class TestSetupImessage:
     def test_already_installed(self):
         """Test _setup_imessage returns True when already installed."""
-        from EvoScientist.onboard import _setup_imessage
+        from EvoScientist.config.onboard import _setup_imessage
 
-        with mock.patch("EvoScientist.onboard.validate_imessage", return_value=(True, "imsg at /bin/imsg")), \
-             mock.patch("EvoScientist.onboard.console"):
+        with patch("EvoScientist.config.onboard.validate_imessage", return_value=(True, "imsg at /bin/imsg")), \
+             patch("EvoScientist.config.onboard.console"):
             result = _setup_imessage()
 
         assert result is True
 
     def test_not_macos(self):
         """Test _setup_imessage returns False on non-macOS."""
-        from EvoScientist.onboard import _setup_imessage
+        from EvoScientist.config.onboard import _setup_imessage
 
-        with mock.patch("EvoScientist.onboard.validate_imessage", return_value=(False, "iMessage requires macOS")), \
-             mock.patch("EvoScientist.onboard.console"):
+        with patch("EvoScientist.config.onboard.validate_imessage", return_value=(False, "iMessage requires macOS")), \
+             patch("EvoScientist.config.onboard.console"):
             result = _setup_imessage()
 
         assert result is False
 
     def test_install_then_valid(self):
         """Test _setup_imessage installs and re-validates successfully."""
-        from EvoScientist.onboard import _setup_imessage
+        from EvoScientist.config.onboard import _setup_imessage
 
-        with mock.patch("EvoScientist.onboard.validate_imessage") as mock_val, \
-             mock.patch("EvoScientist.onboard._install_imsg", return_value=True), \
-             mock.patch("EvoScientist.onboard.questionary") as mock_q, \
-             mock.patch("EvoScientist.onboard.console"):
+        with patch("EvoScientist.config.onboard.validate_imessage") as mock_val, \
+             patch("EvoScientist.config.onboard._install_imsg", return_value=True), \
+             patch("EvoScientist.config.onboard.questionary") as mock_q, \
+             patch("EvoScientist.config.onboard.console"):
             mock_val.side_effect = [
                 (False, "not_installed"),  # First check
                 (True, "imsg at /bin/imsg"),  # After install
@@ -423,11 +423,11 @@ class TestSetupImessage:
 
     def test_user_declines_install(self):
         """Test _setup_imessage returns False when user declines install."""
-        from EvoScientist.onboard import _setup_imessage
+        from EvoScientist.config.onboard import _setup_imessage
 
-        with mock.patch("EvoScientist.onboard.validate_imessage", return_value=(False, "not_installed")), \
-             mock.patch("EvoScientist.onboard.questionary") as mock_q, \
-             mock.patch("EvoScientist.onboard.console"):
+        with patch("EvoScientist.config.onboard.validate_imessage", return_value=(False, "not_installed")), \
+             patch("EvoScientist.config.onboard.questionary") as mock_q, \
+             patch("EvoScientist.config.onboard.console"):
             mock_q.confirm.return_value.ask.return_value = False
             result = _setup_imessage()
 
@@ -437,10 +437,10 @@ class TestSetupImessage:
 class TestStepSkills:
     def test_returns_empty_when_none_selected(self):
         """Test skills step returns empty list when user selects nothing."""
-        from EvoScientist.onboard import _step_skills
+        from EvoScientist.config.onboard import _step_skills
 
-        with mock.patch("EvoScientist.onboard.questionary") as mock_q, \
-             mock.patch("EvoScientist.onboard.console"):
+        with patch("EvoScientist.config.onboard.questionary") as mock_q, \
+             patch("EvoScientist.config.onboard.console"):
             mock_q.checkbox.return_value.ask.return_value = []
             result = _step_skills()
 
@@ -448,13 +448,13 @@ class TestStepSkills:
 
     def test_installs_selected_skills(self):
         """Test skills step installs selected skills and returns sources."""
-        from EvoScientist.onboard import _step_skills, _RECOMMENDED_SKILLS
+        from EvoScientist.config.onboard import _step_skills, _RECOMMENDED_SKILLS
 
         source = _RECOMMENDED_SKILLS[0]["source"]
 
-        with mock.patch("EvoScientist.onboard.questionary") as mock_q, \
-             mock.patch("EvoScientist.onboard.console"), \
-             mock.patch("EvoScientist.tools.skills_manager.install_skill") as mock_install:
+        with patch("EvoScientist.config.onboard.questionary") as mock_q, \
+             patch("EvoScientist.config.onboard.console"), \
+             patch("EvoScientist.tools.skills_manager.install_skill") as mock_install:
             mock_q.checkbox.return_value.ask.return_value = [source]
             mock_install.return_value = {"success": True, "name": "test"}
             result = _step_skills()
@@ -464,13 +464,13 @@ class TestStepSkills:
 
     def test_handles_install_failure(self):
         """Test skills step handles installation errors gracefully."""
-        from EvoScientist.onboard import _step_skills, _RECOMMENDED_SKILLS
+        from EvoScientist.config.onboard import _step_skills, _RECOMMENDED_SKILLS
 
         source = _RECOMMENDED_SKILLS[0]["source"]
 
-        with mock.patch("EvoScientist.onboard.questionary") as mock_q, \
-             mock.patch("EvoScientist.onboard.console"), \
-             mock.patch("EvoScientist.tools.skills_manager.install_skill") as mock_install:
+        with patch("EvoScientist.config.onboard.questionary") as mock_q, \
+             patch("EvoScientist.config.onboard.console"), \
+             patch("EvoScientist.tools.skills_manager.install_skill") as mock_install:
             mock_q.checkbox.return_value.ask.return_value = [source]
             mock_install.side_effect = Exception("network error")
             result = _step_skills()
@@ -479,9 +479,9 @@ class TestStepSkills:
 
     def test_raises_keyboard_interrupt_on_cancel(self):
         """Test skills step raises KeyboardInterrupt on cancel."""
-        from EvoScientist.onboard import _step_skills
+        from EvoScientist.config.onboard import _step_skills
 
-        with mock.patch("EvoScientist.onboard.questionary") as mock_q:
+        with patch("EvoScientist.config.onboard.questionary") as mock_q:
             mock_q.checkbox.return_value.ask.return_value = None
             with pytest.raises(KeyboardInterrupt):
                 _step_skills()
@@ -490,11 +490,11 @@ class TestStepSkills:
 class TestStepChannels:
     def test_returns_disabled_when_skip(self):
         """Test channels step returns disabled when user selects skip."""
-        from EvoScientist.onboard import _step_channels
+        from EvoScientist.config.onboard import _step_channels
 
         config = EvoScientistConfig()
 
-        with mock.patch("EvoScientist.onboard.questionary") as mock_q:
+        with patch("EvoScientist.config.onboard.questionary") as mock_q:
             mock_q.select.return_value.ask.return_value = "skip"
             result = _step_channels(config)
 
@@ -502,17 +502,17 @@ class TestStepChannels:
 
     def test_returns_enabled_when_setup_passes(self):
         """Test channels step returns enabled when setup succeeds."""
-        from EvoScientist.onboard import _step_channels
+        from EvoScientist.config.onboard import _step_channels
 
         config = EvoScientistConfig()
 
-        select_mock_1 = mock.MagicMock()
+        select_mock_1 = MagicMock()
         select_mock_1.ask.return_value = "imessage"
-        select_mock_2 = mock.MagicMock()
+        select_mock_2 = MagicMock()
         select_mock_2.ask.return_value = True
 
-        with mock.patch("EvoScientist.onboard.questionary") as mock_q, \
-             mock.patch("EvoScientist.onboard._setup_imessage", return_value=True):
+        with patch("EvoScientist.config.onboard.questionary") as mock_q, \
+             patch("EvoScientist.config.onboard._setup_imessage", return_value=True):
             mock_q.select.side_effect = [select_mock_1, select_mock_2]
             mock_q.text.return_value.ask.return_value = ""
             result = _step_channels(config)
@@ -521,17 +521,17 @@ class TestStepChannels:
 
     def test_returns_enabled_with_senders(self):
         """Test channels step returns enabled with specific senders."""
-        from EvoScientist.onboard import _step_channels
+        from EvoScientist.config.onboard import _step_channels
 
         config = EvoScientistConfig()
 
-        select_mock_1 = mock.MagicMock()
+        select_mock_1 = MagicMock()
         select_mock_1.ask.return_value = "imessage"
-        select_mock_2 = mock.MagicMock()
+        select_mock_2 = MagicMock()
         select_mock_2.ask.return_value = False
 
-        with mock.patch("EvoScientist.onboard.questionary") as mock_q, \
-             mock.patch("EvoScientist.onboard._setup_imessage", return_value=True):
+        with patch("EvoScientist.config.onboard.questionary") as mock_q, \
+             patch("EvoScientist.config.onboard._setup_imessage", return_value=True):
             mock_q.select.side_effect = [select_mock_1, select_mock_2]
             mock_q.text.return_value.ask.return_value = "+1234567890,+0987654321"
             result = _step_channels(config)
@@ -540,12 +540,12 @@ class TestStepChannels:
 
     def test_setup_fails_user_declines(self):
         """Test channels step returns disabled when setup fails and user declines."""
-        from EvoScientist.onboard import _step_channels
+        from EvoScientist.config.onboard import _step_channels
 
         config = EvoScientistConfig()
 
-        with mock.patch("EvoScientist.onboard.questionary") as mock_q, \
-             mock.patch("EvoScientist.onboard._setup_imessage", return_value=False):
+        with patch("EvoScientist.config.onboard.questionary") as mock_q, \
+             patch("EvoScientist.config.onboard._setup_imessage", return_value=False):
             mock_q.select.return_value.ask.return_value = "imessage"
             mock_q.confirm.return_value.ask.return_value = False
             result = _step_channels(config)
@@ -554,17 +554,17 @@ class TestStepChannels:
 
     def test_setup_fails_user_enables_anyway(self):
         """Test channels step enables when setup fails but user confirms."""
-        from EvoScientist.onboard import _step_channels
+        from EvoScientist.config.onboard import _step_channels
 
         config = EvoScientistConfig()
 
-        select_mock_1 = mock.MagicMock()
+        select_mock_1 = MagicMock()
         select_mock_1.ask.return_value = "imessage"
-        select_mock_2 = mock.MagicMock()
+        select_mock_2 = MagicMock()
         select_mock_2.ask.return_value = True
 
-        with mock.patch("EvoScientist.onboard.questionary") as mock_q, \
-             mock.patch("EvoScientist.onboard._setup_imessage", return_value=False):
+        with patch("EvoScientist.config.onboard.questionary") as mock_q, \
+             patch("EvoScientist.config.onboard._setup_imessage", return_value=False):
             mock_q.select.side_effect = [select_mock_1, select_mock_2]
             mock_q.confirm.return_value.ask.return_value = True
             mock_q.text.return_value.ask.return_value = ""
@@ -574,11 +574,11 @@ class TestStepChannels:
 
     def test_raises_keyboard_interrupt_on_cancel(self):
         """Test channels step raises KeyboardInterrupt on cancel."""
-        from EvoScientist.onboard import _step_channels
+        from EvoScientist.config.onboard import _step_channels
 
         config = EvoScientistConfig()
 
-        with mock.patch("EvoScientist.onboard.questionary") as mock_q:
+        with patch("EvoScientist.config.onboard.questionary") as mock_q:
             mock_q.select.return_value.ask.return_value = None
             with pytest.raises(KeyboardInterrupt):
                 _step_channels(config)
@@ -587,18 +587,18 @@ class TestStepChannels:
 class TestStepMcpServersNpxFailure:
     def test_npx_failure_skips_npx_servers(self):
         """When _ensure_npx returns False, npx-dependent servers must be skipped."""
-        from EvoScientist.onboard import _step_mcp_servers, _RECOMMENDED_MCP_SERVERS
+        from EvoScientist.config.onboard import _step_mcp_servers, _RECOMMENDED_MCP_SERVERS
 
         # Pick server names: one npx-based, one non-npx (URL-based)
         npx_name = next(s["name"] for s in _RECOMMENDED_MCP_SERVERS if s.get("command") == "npx")
         url_name = next(s["name"] for s in _RECOMMENDED_MCP_SERVERS if "url" in s)
 
-        with mock.patch("EvoScientist.onboard._checkbox_ask", return_value=[npx_name, url_name]), \
-             mock.patch("EvoScientist.onboard._ensure_npx", return_value=False), \
-             mock.patch("EvoScientist.onboard._check_npx", return_value=False), \
-             mock.patch("EvoScientist.mcp.client._load_user_config", return_value={}), \
-             mock.patch("EvoScientist.mcp.client.add_mcp_server") as mock_add, \
-             mock.patch("EvoScientist.onboard.console"):
+        with patch("EvoScientist.config.onboard._checkbox_ask", return_value=[npx_name, url_name]), \
+             patch("EvoScientist.config.onboard._ensure_npx", return_value=False), \
+             patch("EvoScientist.config.onboard._check_npx", return_value=False), \
+             patch("EvoScientist.mcp.client._load_user_config", return_value={}), \
+             patch("EvoScientist.mcp.client.add_mcp_server") as mock_add, \
+             patch("EvoScientist.config.onboard.console"):
             result = _step_mcp_servers()
 
         # The npx server must NOT have been added
@@ -611,17 +611,17 @@ class TestStepMcpServersNpxFailure:
 
     def test_npx_failure_returns_empty_when_all_npx(self):
         """When all selected servers are npx-based and npx fails, return []."""
-        from EvoScientist.onboard import _step_mcp_servers, _RECOMMENDED_MCP_SERVERS
+        from EvoScientist.config.onboard import _step_mcp_servers, _RECOMMENDED_MCP_SERVERS
 
         npx_names = [s["name"] for s in _RECOMMENDED_MCP_SERVERS if s.get("command") == "npx"]
         assert len(npx_names) >= 1, "Test requires at least one npx server"
 
-        with mock.patch("EvoScientist.onboard._checkbox_ask", return_value=npx_names), \
-             mock.patch("EvoScientist.onboard._ensure_npx", return_value=False), \
-             mock.patch("EvoScientist.onboard._check_npx", return_value=False), \
-             mock.patch("EvoScientist.mcp.client._load_user_config", return_value={}), \
-             mock.patch("EvoScientist.mcp.client.add_mcp_server") as mock_add, \
-             mock.patch("EvoScientist.onboard.console"):
+        with patch("EvoScientist.config.onboard._checkbox_ask", return_value=npx_names), \
+             patch("EvoScientist.config.onboard._ensure_npx", return_value=False), \
+             patch("EvoScientist.config.onboard._check_npx", return_value=False), \
+             patch("EvoScientist.mcp.client._load_user_config", return_value={}), \
+             patch("EvoScientist.mcp.client.add_mcp_server") as mock_add, \
+             patch("EvoScientist.config.onboard.console"):
             result = _step_mcp_servers()
 
         assert result == []
@@ -631,11 +631,11 @@ class TestStepMcpServersNpxFailure:
 class TestStepParameters:
     def test_returns_parameters(self):
         """Test parameters step returns all values."""
-        from EvoScientist.onboard import _step_parameters
+        from EvoScientist.config.onboard import _step_parameters
 
         config = EvoScientistConfig()
 
-        with mock.patch("EvoScientist.onboard.questionary") as mock_q:
+        with patch("EvoScientist.config.onboard.questionary") as mock_q:
             mock_q.text.return_value.ask.side_effect = ["5", "3"]
             mock_q.select.return_value.ask.return_value = True  # show_thinking
             result = _step_parameters(config)
@@ -644,11 +644,11 @@ class TestStepParameters:
 
     def test_uses_defaults_on_empty_input(self):
         """Test that empty input uses defaults."""
-        from EvoScientist.onboard import _step_parameters
+        from EvoScientist.config.onboard import _step_parameters
 
         config = EvoScientistConfig(max_concurrent=2, max_iterations=4, show_thinking=False)
 
-        with mock.patch("EvoScientist.onboard.questionary") as mock_q:
+        with patch("EvoScientist.config.onboard.questionary") as mock_q:
             mock_q.text.return_value.ask.side_effect = ["", ""]  # Empty inputs
             mock_q.select.return_value.ask.return_value = False  # show_thinking
             result = _step_parameters(config)
@@ -664,12 +664,12 @@ class TestStepParameters:
 class TestRunOnboard:
     def test_returns_true_on_save(self):
         """Test that run_onboard returns True when config is saved."""
-        from EvoScientist.onboard import run_onboard
+        from EvoScientist.config.onboard import run_onboard
 
-        with mock.patch("EvoScientist.onboard.questionary") as mock_q, \
-             mock.patch("EvoScientist.onboard.load_config") as mock_load, \
-             mock.patch("EvoScientist.onboard.save_config") as mock_save, \
-             mock.patch("EvoScientist.onboard.console"):
+        with patch("EvoScientist.config.onboard.questionary") as mock_q, \
+             patch("EvoScientist.config.onboard.load_config") as mock_load, \
+             patch("EvoScientist.config.onboard.save_config") as mock_save, \
+             patch("EvoScientist.config.onboard.console"):
             # Setup mock config
             mock_load.return_value = EvoScientistConfig()
 
@@ -702,11 +702,11 @@ class TestRunOnboard:
 
     def test_returns_false_on_cancel(self):
         """Test that run_onboard returns False when cancelled."""
-        from EvoScientist.onboard import run_onboard
+        from EvoScientist.config.onboard import run_onboard
 
-        with mock.patch("EvoScientist.onboard.questionary") as mock_q, \
-             mock.patch("EvoScientist.onboard.load_config") as mock_load, \
-             mock.patch("EvoScientist.onboard.console"):
+        with patch("EvoScientist.config.onboard.questionary") as mock_q, \
+             patch("EvoScientist.config.onboard.load_config") as mock_load, \
+             patch("EvoScientist.config.onboard.console"):
             mock_load.return_value = EvoScientistConfig()
 
             # First selection returns None (Ctrl+C)
@@ -718,12 +718,12 @@ class TestRunOnboard:
 
     def test_returns_false_when_not_saving(self):
         """Test that run_onboard returns False when user declines to save."""
-        from EvoScientist.onboard import run_onboard
+        from EvoScientist.config.onboard import run_onboard
 
-        with mock.patch("EvoScientist.onboard.questionary") as mock_q, \
-             mock.patch("EvoScientist.onboard.load_config") as mock_load, \
-             mock.patch("EvoScientist.onboard.save_config") as mock_save, \
-             mock.patch("EvoScientist.onboard.console"):
+        with patch("EvoScientist.config.onboard.questionary") as mock_q, \
+             patch("EvoScientist.config.onboard.load_config") as mock_load, \
+             patch("EvoScientist.config.onboard.save_config") as mock_save, \
+             patch("EvoScientist.config.onboard.console"):
             mock_load.return_value = EvoScientistConfig()
 
             mock_q.select.return_value.ask.side_effect = [

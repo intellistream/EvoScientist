@@ -1,6 +1,6 @@
 """Tests for EvoScientist LLM module."""
 
-from unittest import mock
+from unittest.mock import patch
 
 from EvoScientist.llm import (
     MODELS,
@@ -122,7 +122,7 @@ class TestGetModelInfo:
 
 
 class TestGetChatModel:
-    @mock.patch("EvoScientist.llm.models.init_chat_model")
+    @patch("EvoScientist.llm.models.init_chat_model")
     def test_uses_default_model_when_none(self, mock_init):
         """Test that get_chat_model uses default model when model=None."""
         mock_init.return_value = "mock_model"
@@ -136,7 +136,7 @@ class TestGetChatModel:
         assert call_kwargs["model"] == expected_model_id
         assert call_kwargs["model_provider"] == expected_provider
 
-    @mock.patch("EvoScientist.llm.models.init_chat_model")
+    @patch("EvoScientist.llm.models.init_chat_model")
     def test_resolves_short_name(self, mock_init):
         """Test that get_chat_model resolves short names correctly."""
         mock_init.return_value = "mock_model"
@@ -147,7 +147,7 @@ class TestGetChatModel:
         assert call_kwargs["model"] == "claude-opus-4-5-20251101"
         assert call_kwargs["model_provider"] == "anthropic"
 
-    @mock.patch("EvoScientist.llm.models.init_chat_model")
+    @patch("EvoScientist.llm.models.init_chat_model")
     def test_resolves_openai_short_name(self, mock_init):
         """Test that get_chat_model resolves OpenAI short names."""
         mock_init.return_value = "mock_model"
@@ -158,7 +158,7 @@ class TestGetChatModel:
         assert call_kwargs["model"] == "gpt-5-mini-2025-08-07"
         assert call_kwargs["model_provider"] == "openai"
 
-    @mock.patch("EvoScientist.llm.models.init_chat_model")
+    @patch("EvoScientist.llm.models.init_chat_model")
     def test_uses_full_model_id(self, mock_init):
         """Test that get_chat_model accepts full model IDs."""
         mock_init.return_value = "mock_model"
@@ -170,7 +170,7 @@ class TestGetChatModel:
         # Should infer anthropic from the model prefix
         assert call_kwargs["model_provider"] == "anthropic"
 
-    @mock.patch("EvoScientist.llm.models.init_chat_model")
+    @patch("EvoScientist.llm.models.init_chat_model")
     def test_provider_override(self, mock_init):
         """Test that provider can be overridden."""
         mock_init.return_value = "mock_model"
@@ -180,7 +180,7 @@ class TestGetChatModel:
         call_kwargs = mock_init.call_args[1]
         assert call_kwargs["model_provider"] == "custom_provider"
 
-    @mock.patch("EvoScientist.llm.models.init_chat_model")
+    @patch("EvoScientist.llm.models.init_chat_model")
     def test_passes_kwargs(self, mock_init):
         """Test that additional kwargs are passed through."""
         mock_init.return_value = "mock_model"
@@ -191,7 +191,7 @@ class TestGetChatModel:
         assert call_kwargs["temperature"] == 0.7
         assert call_kwargs["max_tokens"] == 1000
 
-    @mock.patch("EvoScientist.llm.models.init_chat_model")
+    @patch("EvoScientist.llm.models.init_chat_model")
     def test_infers_openai_from_gpt_prefix(self, mock_init):
         """Test that OpenAI is inferred from gpt- prefix."""
         mock_init.return_value = "mock_model"
@@ -201,7 +201,7 @@ class TestGetChatModel:
         call_kwargs = mock_init.call_args[1]
         assert call_kwargs["model_provider"] == "openai"
 
-    @mock.patch("EvoScientist.llm.models.init_chat_model")
+    @patch("EvoScientist.llm.models.init_chat_model")
     def test_infers_openai_from_o1_prefix(self, mock_init):
         """Test that OpenAI is inferred from o1 prefix."""
         mock_init.return_value = "mock_model"
@@ -211,7 +211,7 @@ class TestGetChatModel:
         call_kwargs = mock_init.call_args[1]
         assert call_kwargs["model_provider"] == "openai"
 
-    @mock.patch("EvoScientist.llm.models.init_chat_model")
+    @patch("EvoScientist.llm.models.init_chat_model")
     def test_infers_google_from_gemini_prefix(self, mock_init):
         """Test that google-genai is inferred from gemini prefix."""
         mock_init.return_value = "mock_model"
@@ -221,7 +221,7 @@ class TestGetChatModel:
         call_kwargs = mock_init.call_args[1]
         assert call_kwargs["model_provider"] == "google-genai"
 
-    @mock.patch("EvoScientist.llm.models.init_chat_model")
+    @patch("EvoScientist.llm.models.init_chat_model")
     def test_defaults_to_anthropic_for_unknown(self, mock_init):
         """Test that anthropic is default for unknown model prefixes."""
         mock_init.return_value = "mock_model"

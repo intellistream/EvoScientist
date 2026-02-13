@@ -43,9 +43,6 @@ from .paths import (
 _config = get_effective_config()
 apply_config_to_env(_config)
 
-# Backend mode: "sandbox" (with execute) or "filesystem" (read/write only)
-BACKEND_MODE = "sandbox"
-
 # Research limits (from config)
 MAX_CONCURRENT = _config.max_concurrent
 MAX_ITERATIONS = _config.max_iterations
@@ -78,18 +75,12 @@ chat_model = get_chat_model(
     provider=_config.provider,
 )
 
-# Initialize workspace backend based on mode
-if BACKEND_MODE == "sandbox":
-    _workspace_backend = CustomSandboxBackend(
-        root_dir=WORKSPACE_DIR,
-        virtual_mode=True,
-        timeout=300,
-    )
-else:
-    _workspace_backend = FilesystemBackend(
-        root_dir=WORKSPACE_DIR,
-        virtual_mode=True,
-    )
+# Initialize workspace backend
+_workspace_backend = CustomSandboxBackend(
+    root_dir=WORKSPACE_DIR,
+    virtual_mode=True,
+    timeout=300,
+)
 
 # Skills backend: merge user-installed (./skills/) and system (package) skills
 _skills_backend = MergedReadOnlyBackend(

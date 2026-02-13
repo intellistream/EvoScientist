@@ -147,6 +147,29 @@ def reset_config() -> None:
 # Config value operations
 # =============================================================================
 
+def _coerce_value(value: Any, field_type: Any) -> Any:
+    """Coerce a value to the expected field type.
+
+    Args:
+        value: The value to coerce.
+        field_type: The target type (from dataclass field).
+
+    Returns:
+        The coerced value.
+
+    Raises:
+        ValueError: If the value cannot be coerced.
+        TypeError: If the value cannot be coerced.
+    """
+    if field_type == "bool" or field_type is bool:
+        if isinstance(value, str):
+            return value.lower() in ("true", "1", "yes", "on")
+        return bool(value)
+    if field_type == "int" or field_type is int:
+        return int(value)
+    return str(value)
+
+
 def get_config_value(key: str) -> Any:
     """Get a single configuration value.
 
@@ -181,15 +204,7 @@ def set_config_value(key: str, value: Any) -> bool:
     field_type = field_info.type
 
     try:
-        if field_type == "bool" or field_type is bool:
-            if isinstance(value, str):
-                value = value.lower() in ("true", "1", "yes", "on")
-            else:
-                value = bool(value)
-        elif field_type == "int" or field_type is int:
-            value = int(value)
-        elif field_type == "str" or field_type is str:
-            value = str(value)
+        value = _coerce_value(value, field_type)
     except (ValueError, TypeError):
         return False
 
@@ -250,18 +265,11 @@ def get_effective_config(cli_overrides: dict[str, Any] | None = None) -> EvoScie
     for config_key, env_key in _ENV_MAPPINGS.items():
         env_value = os.environ.get(env_key)
         if env_value:
-            # Type coercion
             field_info = next(f for f in fields(EvoScientistConfig) if f.name == config_key)
-            field_type = field_info.type
-            if field_type == "bool" or field_type is bool:
-                data[config_key] = env_value.lower() in ("true", "1", "yes", "on")
-            elif field_type == "int" or field_type is int:
-                try:
-                    data[config_key] = int(env_value)
-                except ValueError:
-                    pass
-            else:
-                data[config_key] = env_value
+            try:
+                data[config_key] = _coerce_value(env_value, field_info.type)
+            except (ValueError, TypeError):
+                pass
 
     # Apply CLI overrides (highest priority)
     if cli_overrides:

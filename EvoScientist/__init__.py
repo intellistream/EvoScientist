@@ -43,6 +43,17 @@ _EXPORTS: dict[str, tuple[str, str]] = {
 
 
 def __getattr__(name: str):
+    """Lazily import and cache package-level attributes.
+
+    Args:
+        name: The attribute name to look up.
+
+    Returns:
+        The resolved attribute value.
+
+    Raises:
+        AttributeError: If the name is not in _EXPORTS.
+    """
     target = _EXPORTS.get(name)
     if target is None:
         raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
@@ -56,6 +67,7 @@ def __getattr__(name: str):
 
 
 def __dir__() -> list[str]:
+    """List available public attributes including lazy exports."""
     return sorted(set(globals()) | set(_EXPORTS))
 
 

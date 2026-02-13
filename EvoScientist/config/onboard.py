@@ -20,13 +20,13 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
 
-from .config import (
+from .settings import (
     EvoScientistConfig,
     load_config,
     save_config,
     get_config_path,
 )
-from .llm import get_models_for_provider
+from ..llm import get_models_for_provider
 
 console = Console()
 
@@ -919,7 +919,7 @@ def _step_skills() -> list[str]:
     Returns:
         List of skill sources that were selected (empty if skipped).
     """
-    from .paths import USER_SKILLS_DIR
+    from ..paths import USER_SKILLS_DIR
 
     # Collect names of already-installed user skills
     skills_dir = Path(USER_SKILLS_DIR)
@@ -975,7 +975,7 @@ def _step_skills() -> list[str]:
 
         return []
 
-    from .tools.skills_manager import install_skill
+    from ..tools.skills_manager import install_skill
 
     installed = []
     for source in selected:
@@ -1070,7 +1070,7 @@ def _step_mcp_servers() -> list[str]:
     Returns:
         List of server names that were installed.
     """
-    from .mcp.client import _load_user_config, add_mcp_server
+    from ..mcp.client import _load_user_config, add_mcp_server
 
     existing_config = _load_user_config()
 
@@ -1177,7 +1177,7 @@ def validate_imessage() -> tuple[bool, str]:
     if sys.platform != "darwin":
         return False, "iMessage requires macOS"
 
-    from .channels.imessage.probe import find_cli
+    from ..channels.imessage.probe import find_cli
 
     cli_path = find_cli()
     if not cli_path:

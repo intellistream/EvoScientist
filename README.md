@@ -326,8 +326,8 @@ EvoSci mcp add brave-search http://localhost:8080/mcp -H "Authorization:Bearer $
 # sse transport, routed to a specific agent
 EvoSci mcp add my-sse http://localhost:9090/sse --transport sse -e research-agent
 
-# With tool allowlist
-EvoSci mcp add fs npx -- -y @modelcontextprotocol/server-filesystem /tmp -t read_file,write_file
+# With tool allowlist (supports glob wildcards)
+EvoSci mcp add fs npx -- -y @modelcontextprotocol/server-filesystem /tmp -t "read_*,write_*"
 ```
 
 Or from the interactive CLI:
@@ -342,7 +342,7 @@ Or from the interactive CLI:
 
 | Flag | Description |
 |------|-------------|
-| `--tools`, `-t` | Comma-separated tool allowlist (omit = all tools) |
+| `--tools`, `-t` | Comma-separated tool allowlist, supports glob wildcards (omit = all tools) |
 | `--expose-to`, `-e` | Comma-separated target agents (default: `main`) |
 | `--header`, `-H` | HTTP header as `Key:Value` (repeatable) |
 | `--env` | Env var as `KEY=VALUE` for stdio (repeatable) |
@@ -356,7 +356,7 @@ filesystem:
   transport: stdio
   command: npx
   args: ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/dir"]
-  tools: [read_file, write_file]     # optional allowlist (omit = all tools)
+  tools: ["read_*", "write_*"]       # optional allowlist with wildcards (omit = all tools)
   expose_to: [main, code-agent]      # optional routing (omit = ["main"])
 
 brave-search:
@@ -395,8 +395,8 @@ Update individual fields on an existing server without re-adding it:
 # Change routing
 EvoSci mcp edit filesystem --expose-to main,code-agent
 
-# Set a tool allowlist
-EvoSci mcp edit filesystem --tools read_file,write_file
+# Set a tool allowlist (supports glob wildcards)
+EvoSci mcp edit filesystem --tools "read_*,write_*"
 
 # Clear a tool allowlist (pass all tools)
 EvoSci mcp edit filesystem --tools none

@@ -44,7 +44,7 @@ More servers: [MCP Server Directory](https://github.com/modelcontextprotocol/ser
 | `env` | No | Environment variables for subprocess |
 | `url` | http/sse/ws | Server URL |
 | `headers` | No | HTTP headers (e.g. auth tokens) |
-| `tools` | No | Tool allowlist (omit = all tools) |
+| `tools` | No | Tool allowlist with glob wildcards (omit = all tools) |
 | `expose_to` | No | Target agents (default: `["main"]`) |
 
 ## Tool Routing

@@ -194,7 +194,7 @@ def _cmd_mcp_add(args_str: str) -> None:
         console.print()
         console.print("[dim]Options:[/dim]")
         console.print("  --transport T          Transport type (default: auto-detect)")
-        console.print("  --tools t1,t2          Tool allowlist")
+        console.print("  --tools t1,t2          Tool allowlist (supports wildcards: *_exa, read_*)")
         console.print("  --expose-to a1,a2      Target agents (default: main)")
         console.print("  --header Key:Value     HTTP header (repeatable)")
         console.print("  --env KEY=VALUE        Env var for stdio (repeatable)")

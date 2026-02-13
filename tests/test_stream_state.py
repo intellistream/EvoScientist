@@ -8,7 +8,9 @@ from EvoScientist.cli import (
 )
 
 
-# === SubAgentState ===
+# =============================================================================
+# SubAgentState
+# =============================================================================
 
 class TestSubAgentState:
     def test_add_tool_call(self):
@@ -74,7 +76,9 @@ class TestSubAgentState:
         assert result is not None
 
 
-# === StreamState ===
+# =============================================================================
+# StreamState
+# =============================================================================
 
 class TestStreamState:
     def test_handle_thinking(self):
@@ -199,7 +203,9 @@ class TestStreamState:
         assert state.subagents[0].is_active is False
 
 
-# === Name merging ===
+# =============================================================================
+# Name merging
+# =============================================================================
 
 class TestNameMerging:
     def test_generic_subagent_merged(self):
@@ -259,7 +265,9 @@ class TestSubagentNameResolution:
         assert state.subagents[-1].name == "sub-agent"
 
 
-# === _parse_todo_items ===
+# =============================================================================
+# _parse_todo_items
+# =============================================================================
 
 class TestParseTodoItems:
     def test_json_input(self):
@@ -285,7 +293,9 @@ class TestParseTodoItems:
         assert _parse_todo_items("") is None
 
 
-# === _build_todo_stats ===
+# =============================================================================
+# _build_todo_stats
+# =============================================================================
 
 class TestBuildTodoStats:
     def test_mixed_statuses(self):
@@ -316,7 +326,9 @@ class TestBuildTodoStats:
         assert "0 items" in result
 
 
-# === _resolve_subagent_name ===
+# =============================================================================
+# _resolve_subagent_name
+# =============================================================================
 
 class TestResolveSubagentName:
     def test_real_name_passthrough(self):
@@ -341,7 +353,9 @@ class TestResolveSubagentName:
         assert state._resolve_subagent_name("sub-agent") == "sub-agent"
 
 
-# === subagent_end fallback ===
+# =============================================================================
+# subagent_end fallback
+# =============================================================================
 
 class TestSubagentEndFallback:
     def test_end_resolves_via_name(self):
@@ -369,7 +383,9 @@ class TestSubagentEndFallback:
         assert state.subagents[1].is_active is True   # b-agent still active
 
 
-# === Todo capture from write_todos args ===
+# =============================================================================
+# Todo capture from write_todos args
+# =============================================================================
 
 class TestTodoCaptureFromArgs:
     def test_capture_from_tool_call_args(self):
@@ -442,7 +458,9 @@ class TestTodoCaptureFromArgs:
         assert state.todo_items == []
 
 
-# === latest_text reset on tool_call ===
+# =============================================================================
+# latest_text reset on tool_call
+# =============================================================================
 
 class TestLatestTextReset:
     def test_latest_text_accumulates(self):
@@ -462,7 +480,9 @@ class TestLatestTextReset:
         assert state.response_text == "first segmentsecond segment"
 
 
-# === Name merging edge cases ===
+# =============================================================================
+# Name merging edge cases
+# =============================================================================
 
 class TestNameMergingAdvanced:
     def test_subagent_merges_into_preregistered(self):
@@ -511,7 +531,9 @@ class TestNameMergingAdvanced:
         assert research_sa.tool_calls[0]["name"] == "tavily_search"
 
 
-# === _parse_todo_items edge cases ===
+# =============================================================================
+# _parse_todo_items edge cases
+# =============================================================================
 
 class TestParseTodoItemsAdvanced:
     def test_prefixed_with_update_message(self):
@@ -531,7 +553,9 @@ class TestParseTodoItemsAdvanced:
         assert _parse_todo_items('["a", "b"]') is None
 
 
-# === ChannelState queue mechanism ===
+# =============================================================================
+# ChannelState queue mechanism
+# =============================================================================
 
 class TestChannelState:
     """Tests for _ChannelState queue-based communication."""
