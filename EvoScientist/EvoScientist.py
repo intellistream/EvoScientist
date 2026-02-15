@@ -207,13 +207,19 @@ def create_cli_agent(workspace_dir: str | None = None, checkpointer=None):
     Args:
         workspace_dir: Optional per-session workspace directory. If provided,
             creates a fresh backend rooted at this path. If None, uses the
-            module-level default backend (./workspace).
+            module-level default backend.
         checkpointer: Optional LangGraph checkpointer. If None, falls back
             to ``InMemorySaver`` (non-persistent).
     """
+    from . import paths as _paths
+
     if checkpointer is None:
         from langgraph.checkpoint.memory import InMemorySaver  # type: ignore[import-untyped]
         checkpointer = InMemorySaver()
+
+    # Read paths dynamically so runtime set_workspace_root() changes are picked up
+    _mem_dir = str(_paths.MEMORY_DIR)
+    _usr_skills_dir = str(_paths.USER_SKILLS_DIR)
 
     if workspace_dir:
         set_active_workspace(workspace_dir)
@@ -223,12 +229,12 @@ def create_cli_agent(workspace_dir: str | None = None, checkpointer=None):
             timeout=300,
         )
         sk_backend = MergedReadOnlyBackend(
-            primary_dir=USER_SKILLS_DIR,
+            primary_dir=_usr_skills_dir,
             secondary_dir=SKILLS_DIR,
         )
         # Memory always uses SHARED directory (not per-session) for cross-session persistence
         mem_backend = FilesystemBackend(
-            root_dir=MEMORY_DIR,
+            root_dir=_mem_dir,
             virtual_mode=True,
         )
         be = CompositeBackend(
@@ -242,7 +248,7 @@ def create_cli_agent(workspace_dir: str | None = None, checkpointer=None):
         be = backend
 
     mw = [
-        create_memory_middleware(MEMORY_DIR, extraction_model=chat_model),
+        create_memory_middleware(_mem_dir, extraction_model=chat_model),
     ]
 
     # Re-load MCP tools from current config (picks up /mcp add changes)

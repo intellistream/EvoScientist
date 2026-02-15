@@ -1,7 +1,7 @@
 """Skill installation and management for EvoScientist.
 
 This module provides functions for installing, listing, and uninstalling user skills.
-Skills are installed to USER_SKILLS_DIR (./workspace/skills/).
+Skills are installed to USER_SKILLS_DIR (defaults to <workspace>/skills/).
 
 Supported installation sources:
 - Local directory paths
@@ -37,7 +37,7 @@ from pathlib import Path
 
 import yaml
 
-from ..paths import USER_SKILLS_DIR
+from .. import paths
 
 
 @dataclass
@@ -220,7 +220,7 @@ def install_skill(source: str, dest_dir: str | None = None) -> dict:
         - path: installed path (if successful)
         - error: error message (if failed)
     """
-    dest_dir = dest_dir or str(USER_SKILLS_DIR)
+    dest_dir = dest_dir or str(paths.USER_SKILLS_DIR)
     os.makedirs(dest_dir, exist_ok=True)
 
     if _is_github_url(source):
@@ -370,7 +370,7 @@ def list_skills(include_system: bool = False) -> list[SkillInfo]:
     skills: list[SkillInfo] = []
 
     # User skills
-    user_dir = Path(USER_SKILLS_DIR)
+    user_dir = Path(paths.USER_SKILLS_DIR)
     if user_dir.exists():
         for entry in sorted(user_dir.iterdir()):
             if entry.is_dir() and _validate_skill_dir(entry):
@@ -421,7 +421,7 @@ def uninstall_skill(name: str) -> dict:
         - success: bool
         - error: error message (if failed)
     """
-    user_dir = Path(USER_SKILLS_DIR).resolve()
+    user_dir = Path(paths.USER_SKILLS_DIR).resolve()
 
     # Validate name to prevent path traversal
     clean_name = _sanitize_name(name)

@@ -4,7 +4,7 @@ import os
 from datetime import datetime
 from pathlib import Path
 
-from ..paths import new_run_dir, RUNS_DIR
+from ..paths import new_run_dir
 
 
 def _shorten_path(path: str) -> str:
@@ -21,8 +21,11 @@ def _shorten_path(path: str) -> str:
         return path
 
 
-def _deduplicate_run_name(name: str, runs_dir: Path = RUNS_DIR) -> str:
+def _deduplicate_run_name(name: str, runs_dir: Path | None = None) -> str:
     """Return *name* if available, otherwise *name_1*, *name_2*, etc."""
+    if runs_dir is None:
+        from ..paths import RUNS_DIR
+        runs_dir = RUNS_DIR
     if not (runs_dir / name).exists():
         return name
     i = 1
@@ -40,7 +43,8 @@ def _create_session_workspace(name: str | None = None) -> str:
               if *name* is None.
     """
     if name:
-        session_id = _deduplicate_run_name(name)
+        from ..paths import RUNS_DIR
+        session_id = _deduplicate_run_name(name, RUNS_DIR)
     else:
         session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
     workspace_dir = str(new_run_dir(session_id))

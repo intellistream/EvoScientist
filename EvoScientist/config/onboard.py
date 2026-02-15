@@ -671,8 +671,12 @@ def _step_workspace(config: EvoScientistConfig) -> tuple[str, str]:
 
     # Custom workdir (optional)
     current_default = config.default_workdir or ""
+    if current_default:
+        prompt_text = f"Workspace directory (Enter to keep '{current_default}'):"
+    else:
+        prompt_text = f"Workspace directory (Enter to use ./{cwd_short}/):"
     workdir = questionary.text(
-        f"Workspace directory (Enter to use ./{cwd_short}/):",
+        prompt_text,
         default=current_default,
         style=WIZARD_STYLE,
         qmark=QMARK,

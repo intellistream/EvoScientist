@@ -239,25 +239,27 @@ The channel can also be started manually with `/channel` in the interactive CLI.
 
 ### Runtime Directories
 
-By default, the **workspace** is created under the current directory:
+By default, the **workspace root** is the current working directory. Sub-directories
+are created automatically:
 
 ```
-./workspace/
+<cwd>/
   memory/   # shared MEMORY.md (persistent across sessions)
   skills/   # user-installed skills
-  runs/     # per-session workspaces
+  runs/     # per-session workspaces (run mode only)
 ```
 
-You can force workspace to be the current directory via `--use-cwd`.
+Use `--workdir` to set a different workspace root, or configure it via
+`EvoSci config set default_workdir /path/to/workspace`.
 
 Override individual paths via environment variables:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `EVOSCIENTIST_WORKSPACE_DIR` | `./workspace` | Root workspace directory |
-| `EVOSCIENTIST_RUNS_DIR` | `./workspace/runs` | Per-session run directories |
-| `EVOSCIENTIST_MEMORY_DIR` | `./workspace/memory` | Shared memory storage |
-| `EVOSCIENTIST_SKILLS_DIR` | `./workspace/skills` | User-installed skills |
+| `EVOSCIENTIST_WORKSPACE_DIR` | current directory | Root workspace directory |
+| `EVOSCIENTIST_RUNS_DIR` | `<workspace>/runs` | Per-session run directories |
+| `EVOSCIENTIST_MEMORY_DIR` | `<workspace>/memory` | Shared memory storage |
+| `EVOSCIENTIST_SKILLS_DIR` | `<workspace>/skills` | User-installed skills |
 
 ### Script Inference
 ```python

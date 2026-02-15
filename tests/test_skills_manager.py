@@ -272,7 +272,7 @@ class TestListSkills:
     """Tests for list_skills function."""
 
     def test_list_empty_dir(self, temp_skills_dir):
-        with patch("EvoScientist.tools.skills_manager.USER_SKILLS_DIR", temp_skills_dir):
+        with patch("EvoScientist.paths.USER_SKILLS_DIR", temp_skills_dir):
             skills = list_skills(include_system=False)
             assert skills == []
 
@@ -280,7 +280,7 @@ class TestListSkills:
         # Install a skill
         install_skill(str(sample_skill_dir), str(temp_skills_dir))
 
-        with patch("EvoScientist.tools.skills_manager.USER_SKILLS_DIR", temp_skills_dir):
+        with patch("EvoScientist.paths.USER_SKILLS_DIR", temp_skills_dir):
             skills = list_skills(include_system=False)
 
             assert len(skills) == 1
@@ -302,7 +302,7 @@ description: Skill number {i}
             )
             install_skill(str(skill_dir), str(temp_skills_dir))
 
-        with patch("EvoScientist.tools.skills_manager.USER_SKILLS_DIR", temp_skills_dir):
+        with patch("EvoScientist.paths.USER_SKILLS_DIR", temp_skills_dir):
             skills = list_skills(include_system=False)
 
             assert len(skills) == 3
@@ -324,7 +324,7 @@ class TestUninstallSkill:
         # Install first
         install_skill(str(sample_skill_dir), str(temp_skills_dir))
 
-        with patch("EvoScientist.tools.skills_manager.USER_SKILLS_DIR", temp_skills_dir):
+        with patch("EvoScientist.paths.USER_SKILLS_DIR", temp_skills_dir):
             result = uninstall_skill("sample-skill")
 
             assert result["success"] is True
@@ -334,7 +334,7 @@ class TestUninstallSkill:
             assert not skill_path.exists()
 
     def test_uninstall_nonexistent_skill(self, temp_skills_dir):
-        with patch("EvoScientist.tools.skills_manager.USER_SKILLS_DIR", temp_skills_dir):
+        with patch("EvoScientist.paths.USER_SKILLS_DIR", temp_skills_dir):
             result = uninstall_skill("nonexistent-skill")
 
             assert result["success"] is False

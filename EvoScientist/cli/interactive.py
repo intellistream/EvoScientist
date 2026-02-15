@@ -204,8 +204,8 @@ def cmd_interactive(
     import nest_asyncio
     nest_asyncio.apply()
 
-    from ..EvoScientist import MEMORY_DIR
-    memory_dir = MEMORY_DIR
+    from .. import paths
+    memory_dir = str(paths.MEMORY_DIR)
 
     history_file = str(os.path.expanduser("~/.EvoScientist_history"))
     session = PromptSession(
