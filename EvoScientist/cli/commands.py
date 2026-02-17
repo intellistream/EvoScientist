@@ -11,7 +11,7 @@ import typer  # type: ignore[import-untyped]
 from rich.table import Table
 
 from ..stream.display import console
-from ..paths import ensure_dirs, default_workspace_dir, set_workspace_root
+from ..paths import ensure_dirs, set_workspace_root
 from ._app import app, config_app, mcp_app, channel_app
 from .agent import _deduplicate_run_name, _create_session_workspace, _load_agent, _shorten_path
 from .channel import _channels_stop, _start_channels_bus_mode
@@ -108,21 +108,27 @@ def serve(
         console.print("[dim]Run [bold]evosci channel setup[/bold] first.[/dim]")
         raise typer.Exit(1)
 
-    show_thinking = not no_thinking
-    ensure_dirs()
-
+    effective_channel_thinking = config.channel_send_thinking and (not no_thinking)
     if workdir:
         ws = os.path.abspath(os.path.expanduser(workdir))
-        os.makedirs(ws, exist_ok=True)
+    elif config.default_workdir:
+        ws = os.path.abspath(os.path.expanduser(config.default_workdir))
     else:
-        ws = str(default_workspace_dir())
-        os.makedirs(ws, exist_ok=True)
+        ws = os.getcwd()
+    os.makedirs(ws, exist_ok=True)
+    set_workspace_root(ws)
+    ensure_dirs()
 
     console.print("[dim]Loading agent...[/dim]")
     agent = _load_agent(workspace_dir=ws)
     tid = str(uuid.uuid4())
 
-    _start_channels_bus_mode(config, agent, tid, show_thinking)
+    _start_channels_bus_mode(
+        config,
+        agent,
+        tid,
+        send_thinking=effective_channel_thinking,
+    )
     console.print("[green]Serve mode started (bus mode).[/green]")
 
     console.print(f"[dim]Thread: {tid}[/dim]")
@@ -428,6 +434,7 @@ def _main_callback(
     apply_config_to_env(config)
 
     show_thinking = config.show_thinking if not no_thinking else False
+    effective_channel_thinking = config.channel_send_thinking and (not no_thinking)
 
     # Validate mutually exclusive options
     if workdir and use_cwd:
@@ -525,6 +532,7 @@ def _main_callback(
         # Interactive mode (default) — checkpointer managed inside cmd_interactive
         cmd_interactive(
             show_thinking=show_thinking,
+            channel_send_thinking=effective_channel_thinking,
             workspace_dir=workspace_dir,
             workspace_fixed=workspace_fixed,
             mode=effective_mode,

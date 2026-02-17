@@ -371,8 +371,31 @@ class Channel(ChannelPlugin, ABC):
         pass
 
     async def stop(self) -> None:
-        """Stop the channel. Cancels typing tasks, then calls _cleanup()."""
+        """Stop the channel and flush pending debounce buffers."""
         self._running = False
+
+        # Cancel pending debounce timers, then flush buffered messages so they
+        # are not lost when stopping within the debounce window.
+        pending_tasks = list(self._debounce_tasks.values())
+        for task in pending_tasks:
+            task.cancel()
+        for task in pending_tasks:
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+            except Exception as e:
+                _logger.debug(f"{self.name} debounce task shutdown error: {e}")
+        self._debounce_tasks.clear()
+
+        for sender in list(self._message_buffers.keys()):
+            try:
+                await self._process_buffered_messages(sender)
+            except Exception as e:
+                _logger.error(
+                    f"{self.name} failed to flush buffered messages for {sender}: {e}"
+                )
+
         await self._typing_manager.stop_all()
         await self._cleanup()
 
@@ -961,9 +984,6 @@ class Channel(ChannelPlugin, ABC):
             except Exception as e:
                 _logger.error(f"Channel {self.name} error: {e}")
             finally:
-                for task in self._debounce_tasks.values():
-                    task.cancel()
-                self._debounce_tasks.clear()
                 # Preserve reconnect intent across stop()
                 should_reconnect = self._running
                 try:

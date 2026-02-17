@@ -178,6 +178,7 @@ def _build_metadata(workspace_dir: str | None, model: str | None) -> dict:
 
 def cmd_interactive(
     show_thinking: bool = True,
+    channel_send_thinking: bool = True,
     workspace_dir: str | None = None,
     workspace_fixed: bool = False,
     mode: str | None = None,
@@ -193,6 +194,7 @@ def cmd_interactive(
 
     Args:
         show_thinking: Whether to display thinking panels
+        channel_send_thinking: Whether channels should receive thinking messages
         workspace_dir: Per-session workspace directory path
         workspace_fixed: If True, /new keeps the same workspace directory
         mode: Workspace mode ('daemon' or 'run'), displayed in banner
@@ -544,7 +546,12 @@ def cmd_interactive(
             from ..config import load_config
             config = load_config()
             if config and config.channel_enabled and not _channels_is_running():
-                _auto_start_channel(state["agent"], state["thread_id"], config)
+                _auto_start_channel(
+                    state["agent"],
+                    state["thread_id"],
+                    config,
+                    send_thinking=channel_send_thinking,
+                )
 
             try:
                 _print_separator()
@@ -633,7 +640,12 @@ def cmd_interactive(
                                 stop_arg = args[len("stop"):].strip()
                                 _cmd_channel_stop(stop_arg or None)
                             else:
-                                _cmd_channel(args, state["agent"], state["thread_id"])
+                                _cmd_channel(
+                                    args,
+                                    state["agent"],
+                                    state["thread_id"],
+                                    send_thinking=channel_send_thinking,
+                                )
                             continue
 
                         # Stream agent response with metadata for persistence

@@ -145,7 +145,13 @@ def _channels_stop(channel_type: str | None = None) -> None:
         _cli_thread_id = None
 
 
-def _start_channels_bus_mode(config, agent, thread_id: str, show_thinking: bool = True) -> None:
+def _start_channels_bus_mode(
+    config,
+    agent,
+    thread_id: str,
+    *,
+    send_thinking: bool | None = None,
+) -> None:
     """Start all channels in bus mode with MessageBus + ChannelManager.
 
     Creates a single event loop in a daemon thread running the bus,
@@ -157,9 +163,13 @@ def _start_channels_bus_mode(config, agent, thread_id: str, show_thinking: bool 
 
     mgr = ChannelManager.from_config(config)
 
-    if show_thinking:
-        for channel in mgr._channels.values():
-            channel.send_thinking = True
+    effective_send_thinking = (
+        getattr(config, "channel_send_thinking", True)
+        if send_thinking is None
+        else send_thinking
+    )
+    for channel in mgr._channels.values():
+        channel.send_thinking = bool(effective_send_thinking)
 
     _manager = mgr
 
@@ -200,7 +210,12 @@ def _start_channels_bus_mode(config, agent, thread_id: str, show_thinking: bool 
         time.sleep(0.1)
 
 
-def _add_channel_to_running_bus(channel_type: str, config) -> None:
+def _add_channel_to_running_bus(
+    channel_type: str,
+    config,
+    *,
+    send_thinking: bool | None = None,
+) -> None:
     """Dynamically add a single channel to the already-running bus.
 
     Raises:
@@ -210,9 +225,15 @@ def _add_channel_to_running_bus(channel_type: str, config) -> None:
     if not _manager or not _bus_loop:
         raise RuntimeError("Bus not initialised")
 
+    effective_send_thinking = (
+        getattr(config, "channel_send_thinking", True)
+        if send_thinking is None
+        else send_thinking
+    )
+
     async def _do_add():
         channel = await _manager.add_channel(channel_type, config)
-        channel.send_thinking = True
+        channel.send_thinking = bool(effective_send_thinking)
 
     future = asyncio.run_coroutine_threadsafe(_do_add(), _bus_loop)
     future.result(timeout=10)
@@ -312,7 +333,13 @@ def _print_channel_panel(channels: list[tuple[str, bool, str]]) -> None:
     console.print()
 
 
-def _cmd_channel(args: str, agent: Any, thread_id: str) -> None:
+def _cmd_channel(
+    args: str,
+    agent: Any,
+    thread_id: str,
+    *,
+    send_thinking: bool | None = None,
+) -> None:
     """Start a channel in background using bus mode.
 
     Usage:
@@ -368,7 +395,11 @@ def _cmd_channel(args: str, agent: Any, thread_id: str) -> None:
                 results.append((ct, True, "already running"))
             else:
                 try:
-                    _add_channel_to_running_bus(ct, app_config)
+                    _add_channel_to_running_bus(
+                        ct,
+                        app_config,
+                        send_thinking=send_thinking,
+                    )
                     results.append((ct, True, "connected (bus)"))
                 except Exception as e:
                     results.append((ct, False, str(e)))
@@ -382,7 +413,12 @@ def _cmd_channel(args: str, agent: Any, thread_id: str) -> None:
     original = app_config.channel_enabled
     app_config.channel_enabled = channel_type
     try:
-        _start_channels_bus_mode(app_config, agent, thread_id)
+        _start_channels_bus_mode(
+            app_config,
+            agent,
+            thread_id,
+            send_thinking=send_thinking,
+        )
         results = [(ct, True, "connected (bus)") for ct in requested]
     except Exception as e:
         results = [(ct, False, str(e)) for ct in requested]
@@ -413,7 +449,13 @@ def _cmd_channel_stop(channel_type: str | None = None) -> None:
         console.print(f"[dim]{', '.join(running)} stopped[/dim]\n")
 
 
-def _auto_start_channel(agent: Any, thread_id: str, config) -> None:
+def _auto_start_channel(
+    agent: Any,
+    thread_id: str,
+    config,
+    *,
+    send_thinking: bool | None = None,
+) -> None:
     """Start channels automatically from config (bus mode).
 
     Args:
@@ -429,7 +471,12 @@ def _auto_start_channel(agent: Any, thread_id: str, config) -> None:
     _cli_agent = agent
     _cli_thread_id = thread_id
 
-    _start_channels_bus_mode(config, agent, thread_id)
+    _start_channels_bus_mode(
+        config,
+        agent,
+        thread_id,
+        send_thinking=send_thinking,
+    )
     types = [t.strip() for t in config.channel_enabled.split(",") if t.strip()]
     results = [(ct, True, "connected (bus)") for ct in types]
     _print_channel_panel(results)

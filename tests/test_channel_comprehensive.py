@@ -984,8 +984,8 @@ class TestChannelManagerDispatch:
             # Should not raise
         _run(_test())
 
-    def test_dispatch_ignores_send_return_false(self):
-        """[B-18] _dispatch_outbound ignores send() return value — health is inaccurate."""
+    def test_dispatch_send_return_false_counts_failure(self):
+        """send() returning False should mark the delivery as failed."""
         async def _test():
             bus = MessageBus()
             mgr = ChannelManager(bus)
@@ -1009,9 +1009,35 @@ class TestChannelManagerDispatch:
                 pass
 
             health = mgr._health["stub"]
-            # BUG: health shows success even though send returned False
-            assert health.total_successes == 1  # Documents the bug
-            assert health.total_failures == 0   # Should be 1
+            assert health.total_successes == 0
+            assert health.total_failures == 1
+            assert health.consecutive_failures == 1
+        _run(_test())
+
+    def test_dispatch_send_media_return_false_counts_failure(self):
+        """send_media() returning False should mark the delivery as failed."""
+        async def _test():
+            bus = MessageBus()
+            mgr = ChannelManager(bus)
+            ch = StubChannel()
+            ch.send_media = AsyncMock(return_value=False)
+            mgr.register(ch)
+
+            task = asyncio.create_task(mgr._dispatch_outbound())
+            await bus.publish_outbound(OutboundMessage(
+                channel="stub", chat_id="c1", content="", media=["/tmp/file.png"],
+            ))
+            await asyncio.sleep(0.1)
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+
+            health = mgr._health["stub"]
+            assert health.total_successes == 0
+            assert health.total_failures == 1
+            assert health.consecutive_failures == 1
         _run(_test())
 
 
@@ -1435,7 +1461,7 @@ class TestIntegration:
         _run(_test())
 
     def test_debounce_lost_on_stop(self):
-        """[B-06] Buffered messages are lost when channel stops during debounce."""
+        """Buffered messages should be flushed when stop() is called."""
         async def _test():
             bus = MessageBus()
             ch = StubChannel()
@@ -1456,8 +1482,9 @@ class TestIntegration:
             ch._running = True
             await ch.stop()
 
-            # BUG: The buffered message was never published
-            assert bus.inbound_size == 0  # Documents data loss
+            assert bus.inbound_size == 1
+            flushed = await bus.consume_inbound()
+            assert flushed.content == "will be lost"
         _run(_test())
 
     def test_send_locks_unbounded_growth(self):

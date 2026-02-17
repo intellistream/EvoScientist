@@ -825,20 +825,36 @@ class ChannelManager:
                         continue  # dropped by pipeline
                     msg = processed
 
+                delivery_failed = False
                 if msg.content:
-                    await channel.send(msg)
+                    text_ok = await channel.send(msg)
+                    if not text_ok:
+                        logger.error(
+                            f"Error sending to {msg.channel}: send() returned False"
+                        )
+                        delivery_failed = True
 
                 for media_path in msg.media:
                     try:
-                        await channel.send_media(
+                        media_ok = await channel.send_media(
                             recipient=msg.chat_id,
                             file_path=media_path,
                             metadata=msg.metadata,
                         )
+                        if not media_ok:
+                            logger.error(
+                                f"Error sending media to {msg.channel}: send_media() "
+                                f"returned False for {media_path}"
+                            )
+                            delivery_failed = True
                     except Exception as e:
                         logger.error(
                             f"Error sending media to {msg.channel}: {e}"
                         )
+                        delivery_failed = True
+
+                if delivery_failed:
+                    raise RuntimeError("one or more outbound deliveries failed")
 
                 # Success
                 health = self._health.get(msg.channel)
