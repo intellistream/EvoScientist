@@ -18,6 +18,8 @@ Send API:
 
 from __future__ import annotations
 
+import base64
+import hashlib
 import json
 import logging
 import re
@@ -538,6 +540,30 @@ class FeishuChannel(Channel, WebhookMixin, TokenMixin):
         # Clean up extra whitespace left behind
         return re.sub(r"  +", " ", result).strip()
 
+    # ── Event decryption ─────────────────────────────────────────
+
+    def _decrypt_event(self, encrypted: str) -> dict:
+        """Decrypt a Feishu encrypted event payload (AES-256-CBC).
+
+        Feishu encryption spec:
+          key   = SHA256(encrypt_key)
+          data  = base64_decode(encrypted)
+          iv    = data[:16]
+          plain = AES_CBC_decrypt(data[16:], key, iv)  # PKCS7 padded
+        """
+        from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+
+        key = hashlib.sha256(self.config.encrypt_key.encode()).digest()
+        data = base64.b64decode(encrypted)
+        iv, ciphertext = data[:16], data[16:]
+        cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
+        decryptor = cipher.decryptor()
+        padded = decryptor.update(ciphertext) + decryptor.finalize()
+        # Remove PKCS7 padding
+        pad_len = padded[-1]
+        plaintext = padded[:-pad_len].decode()
+        return json.loads(plaintext)
+
     # ── Webhook event handler ─────────────────────────────────────
 
     async def _handle_event(self, request) -> "web.Response":
@@ -548,6 +574,14 @@ class FeishuChannel(Channel, WebhookMixin, TokenMixin):
             body = await request.json()
         except Exception:
             return web.Response(status=400)
+
+        # ── Decrypt if encrypt_key is configured ──
+        if self.config.encrypt_key and "encrypt" in body:
+            try:
+                body = self._decrypt_event(body["encrypt"])
+            except Exception:
+                logger.exception("Feishu event decryption failed")
+                return web.Response(status=400)
 
         # ── URL verification challenge ──
         if body.get("type") == "url_verification":
@@ -567,8 +601,12 @@ class FeishuChannel(Channel, WebhookMixin, TokenMixin):
                     return web.Response(status=403)
 
             event_type = header.get("event_type", "")
+            logger.info(f"Feishu v2 event received: {event_type}")
             if event_type == "im.message.receive_v1":
-                await self._on_message(body.get("event", {}))
+                try:
+                    await self._on_message(body.get("event", {}))
+                except Exception:
+                    logger.exception("Feishu _on_message failed")
 
         # ── v1 event schema (legacy) ──
         elif "event" in body:
@@ -580,8 +618,14 @@ class FeishuChannel(Channel, WebhookMixin, TokenMixin):
 
             event = body["event"]
             msg_type = event.get("type", "")
+            logger.info(f"Feishu v1 event received: type={msg_type}")
             if msg_type == "message":
-                await self._on_message_v1(event)
+                try:
+                    await self._on_message_v1(event)
+                except Exception:
+                    logger.exception("Feishu _on_message_v1 failed")
+        else:
+            logger.info(f"Feishu event ignored: schema={schema}")
 
         return web.Response(status=200)
 
