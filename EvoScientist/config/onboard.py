@@ -1322,6 +1322,9 @@ def _step_channels(config: EvoScientistConfig) -> dict[str, object]:
         ("feishu",    "Feishu",    [("feishu_app_id", "App ID"), ("feishu_app_secret", "App Secret")], "aiohttp", "feishu"),
         ("dingtalk",  "DingTalk",  [("dingtalk_client_id", "Client ID (AppKey)"), ("dingtalk_client_secret", "Client Secret (AppSecret)")], "aiohttp", "dingtalk"),
         ("wechat",    "WeChat",    [("wechat_wecom_corp_id", "WeCom Corp ID"), ("wechat_wecom_agent_id", "WeCom Agent ID"), ("wechat_wecom_secret", "WeCom Secret")], "aiohttp", "wechat"),
+        ("email",     "Email",     [("email_imap_host", "IMAP host"), ("email_imap_username", "IMAP username"), ("email_imap_password", "IMAP password"), ("email_smtp_host", "SMTP host"), ("email_smtp_username", "SMTP username"), ("email_smtp_password", "SMTP password"), ("email_from_address", "From address")], None, None),
+        ("qq",        "QQ",        [("qq_app_id", "App ID"), ("qq_app_secret", "App Secret")], "botpy", "qq"),
+        ("signal",    "Signal",    [("signal_phone_number", "Phone number (E.164)")], None, None),
         ("imessage",  "iMessage",  [], None, None),  # handled via _setup_imessage()
     ]
 
@@ -1545,6 +1548,28 @@ def _probe_channel(
                 _val("dingtalk_client_id"),
                 _val("dingtalk_client_secret"),
                 _val("dingtalk_proxy") or None,
+            )
+        elif ch_name == "email":
+            from ..channels.email.probe import validate_email_imap
+            return await validate_email_imap(
+                _val("email_imap_host"),
+                int(_val("email_imap_port", "993")),
+                _val("email_imap_username"),
+                _val("email_imap_password"),
+                _val("email_imap_use_ssl", "True").lower() not in ("false", "0", "no"),
+            )
+        elif ch_name == "qq":
+            from ..channels.qq.probe import validate_qq
+            return await validate_qq(
+                _val("qq_app_id"),
+                _val("qq_app_secret"),
+            )
+        elif ch_name == "signal":
+            from ..channels.signal.probe import validate_signal
+            return await validate_signal(
+                _val("signal_phone_number"),
+                _val("signal_cli_path", "signal-cli"),
+                int(_val("signal_rpc_port", "7583")),
             )
         else:
             return True, "No probe available"
