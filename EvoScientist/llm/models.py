@@ -31,6 +31,8 @@ _MODEL_ENTRIES: list[tuple[str, str, str]] = [
     ("gpt-5-mini", "gpt-5-mini-2025-08-07", "openai"),
     ("gpt-5-nano", "gpt-5-nano-2025-08-07", "openai"),
     # Google GenAI
+    ("gemini-3.1-pro", "gemini-3.1-pro-preview", "google-genai"),
+    ("gemini-3.1-pro-customtools", "gemini-3.1-pro-preview-customtools", "google-genai"),
     ("gemini-3-pro", "gemini-3-pro-preview", "google-genai"),
     ("gemini-3-flash", "gemini-3-flash-preview", "google-genai"),
     ("gemini-2.5-flash", "gemini-2.5-flash", "google-genai"),
