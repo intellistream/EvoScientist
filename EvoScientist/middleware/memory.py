@@ -572,14 +572,29 @@ class EvoMemoryMiddleware(AgentMiddleware):
         forces tool use (as with_structured_output does).  Similarly,
         OpenAI reasoning can conflict.  Strip these settings so extraction
         works reliably.
+
+        Uses model_copy() to produce a real new instance — bind() only
+        wraps the model in a RunnableBinding whose kwargs do NOT override
+        first-class Pydantic fields like ``thinking`` on ChatAnthropic.
         """
-        rebind: dict[str, Any] = {}
+        updates: dict[str, Any] = {}
         model_kwargs = getattr(model, "model_kwargs", {}) or {}
+
         if getattr(model, "thinking", None) or "thinking" in model_kwargs:
-            rebind["thinking"] = {"type": "disabled"}
+            updates["thinking"] = None
         if getattr(model, "reasoning", None) or "reasoning" in model_kwargs:
-            rebind["reasoning"] = None
-        return model.bind(**rebind) if rebind else model
+            updates["reasoning"] = None
+
+        if not updates:
+            return model
+
+        # Prefer Pydantic model_copy (creates a true new instance with the
+        # field cleared) over bind() which only adds invocation kwargs.
+        try:
+            return model.model_copy(update=updates)
+        except Exception:  # noqa: BLE001
+            # Fallback for non-Pydantic or unusual model classes
+            return model.bind(**{k: v for k, v in updates.items() if v is not None})
 
     def _extract(self, model: BaseChatModel, memory: str, messages: list[AnyMessage]) -> dict[str, Any]:
         """Run LLM extraction on recent messages using structured output."""
