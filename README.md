@@ -12,18 +12,15 @@
   <source media="(prefers-color-scheme: light)" srcset=".github/assets/badge-pypi-light.svg">
   <source media="(prefers-color-scheme: dark)" srcset=".github/assets/badge-pypi-dark.svg">
   <img alt="PyPI v0.0.1" src=".github/assets/badge-pypi-light.svg" height="28">
-</picture></a>&nbsp;
-<a href="https://evoscientist.ai/"><picture>
+</picture></a><a href="https://evoscientist.ai/"><picture>
   <source media="(prefers-color-scheme: light)" srcset=".github/assets/badge-website-light.svg">
   <source media="(prefers-color-scheme: dark)" srcset=".github/assets/badge-website-dark.svg">
   <img alt="Website" src=".github/assets/badge-website-light.svg" height="28">
-</picture></a>&nbsp;
-<a href="https://github.com/langchain-ai/deepagents"><picture>
+</picture></a><a href="https://github.com/langchain-ai/deepagents"><picture>
   <source media="(prefers-color-scheme: light)" srcset=".github/assets/badge-framework-light.svg">
   <source media="(prefers-color-scheme: dark)" srcset=".github/assets/badge-framework-dark.svg">
   <img alt="Framework DeepAgents" src=".github/assets/badge-framework-light.svg" height="28">
-</picture></a>&nbsp;
-<a href="https://github.com/EvoScientist/EvoScientist/blob/main/LICENSE"><picture>
+</picture></a><a href="https://github.com/EvoScientist/EvoScientist/blob/main/LICENSE"><picture>
   <source media="(prefers-color-scheme: light)" srcset=".github/assets/badge-license-light.svg">
   <source media="(prefers-color-scheme: dark)" srcset=".github/assets/badge-license-dark.svg">
   <img alt="License MIT" src=".github/assets/badge-license-light.svg" height="28">
