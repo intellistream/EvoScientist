@@ -55,7 +55,19 @@ def _cmd_install_skill(source: str) -> None:
 
     result = install_skill(source)
 
-    if result["success"]:
+    if result.get("batch"):
+        # Batch install — multiple skills
+        for item in result.get("installed", []):
+            console.print(f"[green]Installed:[/green] {item['name']}")
+            console.print(f"  [dim]Description:[/dim] {item.get('description', '(none)')}")
+            console.print(f"  [dim]Path:[/dim] [cyan]{_shorten_path(item['path'])}[/cyan]")
+        for item in result.get("failed", []):
+            console.print(f"[red]Failed:[/red] {item['name']} — {item['error']}")
+        installed_count = len(result.get("installed", []))
+        if installed_count:
+            console.print(f"\n[green]{installed_count} skill(s) installed.[/green]")
+            console.print("[dim]Reload with /new to apply.[/dim]")
+    elif result["success"]:
         console.print(f"[green]Installed:[/green] {result['name']}")
         console.print(f"[dim]Description:[/dim] {result.get('description', '(none)')}")
         console.print(f"[dim]Path:[/dim] [cyan]{_shorten_path(result['path'])}[/cyan]")

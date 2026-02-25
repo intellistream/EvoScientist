@@ -248,31 +248,72 @@ def _install_from_local(source: str, dest_dir: str) -> dict:
         return {"success": False, "error": f"Not a directory: {source}"}
 
     if not _validate_skill_dir(source_path):
+        # No SKILL.md at root — check immediate subdirectories for batch install
+        found = [
+            entry
+            for entry in sorted(source_path.iterdir())
+            if entry.is_dir() and _validate_skill_dir(entry)
+        ]
+        if len(found) == 1:
+            return _install_single_local(found[0], dest_dir)
+        if found:
+            return _batch_install_local(found, dest_dir)
         return {"success": False, "error": f"No SKILL.md found in: {source}"}
 
-    # Parse SKILL.md to get the skill name
+    return _install_single_local(source_path, dest_dir)
+
+
+def _install_single_local(
+    source_path: Path, dest_dir: str, *, ignore_fn=None
+) -> dict:
+    """Install one skill directory into *dest_dir*."""
     skill_info = _parse_skill_md(source_path / "SKILL.md")
     skill_name = _sanitize_name(skill_info["name"])
     if not skill_name:
-        return {"success": False, "error": f"Invalid skill name in SKILL.md: {skill_info['name']!r}"}
+        return {
+            "success": False,
+            "error": f"Invalid skill name in SKILL.md: {skill_info['name']!r}",
+        }
 
-    # Destination path — resolve and verify it stays inside dest_dir
     target_path = (Path(dest_dir) / skill_name).resolve()
     if not str(target_path).startswith(str(Path(dest_dir).resolve())):
-        return {"success": False, "error": f"Skill name escapes destination: {skill_info['name']!r}"}
+        return {
+            "success": False,
+            "error": f"Skill name escapes destination: {skill_info['name']!r}",
+        }
 
-    # Remove existing if present
     if target_path.exists():
         shutil.rmtree(target_path)
 
-    # Copy skill directory
-    shutil.copytree(source_path, target_path)
+    shutil.copytree(source_path, target_path, ignore=ignore_fn)
 
     return {
         "success": True,
         "name": skill_name,
         "path": str(target_path),
         "description": skill_info["description"],
+    }
+
+
+def _batch_install_local(
+    skill_dirs: list[Path], dest_dir: str, *, ignore_fn=None
+) -> dict:
+    """Install multiple skill directories and return a batch result."""
+    installed: list[dict] = []
+    failed: list[dict] = []
+
+    for sd in skill_dirs:
+        result = _install_single_local(sd, dest_dir, ignore_fn=ignore_fn)
+        if result["success"]:
+            installed.append(result)
+        else:
+            failed.append({"name": sd.name, "error": result["error"]})
+
+    return {
+        "success": len(installed) > 0,
+        "batch": True,
+        "installed": installed,
+        "failed": failed,
     }
 
 
@@ -291,6 +332,10 @@ def _install_from_github(source: str, dest_dir: str) -> dict:
         except RuntimeError as e:
             return {"success": False, "error": str(e)}
 
+        # Exclude .git from copies
+        def ignore_git(dir_name: str, files: list[str]) -> list[str]:
+            return [f for f in files if f == ".git"]
+
         # Determine the skill source directory
         if path:
             skill_source = Path(clone_dir) / path
@@ -299,63 +344,40 @@ def _install_from_github(source: str, dest_dir: str) -> dict:
 
         # Validate — if the direct path doesn't have SKILL.md, try auto-resolve
         if not skill_source.exists() or not _validate_skill_dir(skill_source):
-            if path:
-                # The shorthand path (e.g. "canvas-design") may be nested deeper
-                # Walk the tree to find a directory with that name + SKILL.md
-                skill_name_hint = path.rstrip("/").rsplit("/", 1)[-1]
-                resolved = _find_skill_in_tree(clone_dir, skill_name_hint)
-                if resolved:
-                    skill_source = resolved
-                else:
-                    return {"success": False, "error": f"No SKILL.md found at '{path}' (also searched subdirectories) in: {source}"}
-            else:
-                # No path specified — list available skills in repo root
-                found_skills = []
-                for entry in os.listdir(clone_dir):
-                    entry_path = Path(clone_dir) / entry
-                    if entry_path.is_dir() and _validate_skill_dir(entry_path):
-                        found_skills.append(entry)
+            # If the path directory exists, scan its children for skills
+            if skill_source.is_dir():
+                found_children = sorted(
+                    entry.name
+                    for entry in skill_source.iterdir()
+                    if entry.is_dir() and _validate_skill_dir(entry)
+                )
+                if len(found_children) == 1:
+                    skill_source = skill_source / found_children[0]
+                elif found_children:
+                    skill_dirs = [skill_source / s for s in found_children]
+                    return _batch_install_local(
+                        skill_dirs, dest_dir, ignore_fn=ignore_git
+                    )
 
-                if len(found_skills) == 1:
-                    # Only one skill in repo — just install it
-                    skill_source = Path(clone_dir) / found_skills[0]
-                elif found_skills:
-                    return {
-                        "success": False,
-                        "error": (
-                            f"Multiple skills found in repo. "
-                            f"Please specify one: {', '.join(sorted(found_skills))}"
-                        ),
-                    }
+            # Still not resolved — try tree search by name hint
+            if not _validate_skill_dir(skill_source):
+                if path:
+                    skill_name_hint = path.rstrip("/").rsplit("/", 1)[-1]
+                    resolved = _find_skill_in_tree(clone_dir, skill_name_hint)
+                    if resolved:
+                        skill_source = resolved
+                    else:
+                        return {"success": False, "error": f"No SKILL.md found at '{path}' (also searched subdirectories) in: {source}"}
                 else:
                     return {"success": False, "error": f"No SKILL.md found in: {source}"}
 
-        # Parse skill info and copy
-        skill_info = _parse_skill_md(skill_source / "SKILL.md")
-        skill_name = _sanitize_name(skill_info["name"])
-        if not skill_name:
-            return {"success": False, "error": f"Invalid skill name in SKILL.md: {skill_info['name']!r}"}
-
-        target_path = (Path(dest_dir) / skill_name).resolve()
-        if not str(target_path).startswith(str(Path(dest_dir).resolve())):
-            return {"success": False, "error": f"Skill name escapes destination: {skill_info['name']!r}"}
-
-        if target_path.exists():
-            shutil.rmtree(target_path)
-
-        # Copy, excluding .git directory
-        def ignore_git(dir_name: str, files: list[str]) -> list[str]:
-            return [f for f in files if f == ".git"]
-
-        shutil.copytree(skill_source, target_path, ignore=ignore_git)
-
-        return {
-            "success": True,
-            "name": skill_name,
-            "path": str(target_path),
-            "description": skill_info["description"],
-            "source": source,
-        }
+        # Single skill — install it
+        result = _install_single_local(
+            skill_source, dest_dir, ignore_fn=ignore_git
+        )
+        if result.get("success"):
+            result["source"] = source
+        return result
 
 
 def list_skills(include_system: bool = False) -> list[SkillInfo]:

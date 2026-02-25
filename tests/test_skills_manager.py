@@ -339,3 +339,77 @@ class TestUninstallSkill:
 
             assert result["success"] is False
             assert "not found" in result["error"]
+
+
+# =============================================================================
+# Tests for batch install
+# =============================================================================
+
+
+class TestBatchInstall:
+    """Tests for batch installing multiple skills from one directory."""
+
+    def _make_skill(self, parent: Path, name: str, desc: str) -> Path:
+        """Helper to create a minimal skill directory."""
+        d = parent / name
+        d.mkdir()
+        (d / "SKILL.md").write_text(
+            f"---\nname: {name}\ndescription: {desc}\n---\n\n# {name}\n"
+        )
+        return d
+
+    def test_batch_install_local_multiple_skills(self, tmp_path, temp_skills_dir):
+        """Local path with no root SKILL.md but 3 sub-skills installs all."""
+        repo = tmp_path / "multi-repo"
+        repo.mkdir()
+        self._make_skill(repo, "skill-a", "Alpha")
+        self._make_skill(repo, "skill-b", "Beta")
+        self._make_skill(repo, "skill-c", "Gamma")
+
+        result = install_skill(str(repo), str(temp_skills_dir))
+
+        assert result["success"] is True
+        assert result.get("batch") is True
+        assert len(result["installed"]) == 3
+        assert result["failed"] == []
+
+        names = {r["name"] for r in result["installed"]}
+        assert names == {"skill-a", "skill-b", "skill-c"}
+
+        # Verify files copied
+        for name in names:
+            assert (temp_skills_dir / name / "SKILL.md").exists()
+
+    def test_batch_install_local_single_still_works(self, tmp_path, temp_skills_dir):
+        """Local path with root SKILL.md still installs as single."""
+        self._make_skill(tmp_path, "single", "Just one")
+
+        result = install_skill(str(tmp_path / "single"), str(temp_skills_dir))
+
+        assert result["success"] is True
+        assert result.get("batch") is not True
+        assert result["name"] == "single"
+
+    def test_batch_install_local_empty_repo_fails(self, tmp_path, temp_skills_dir):
+        """Local path with no skills at any level fails."""
+        empty = tmp_path / "empty-repo"
+        empty.mkdir()
+
+        result = install_skill(str(empty), str(temp_skills_dir))
+
+        assert result["success"] is False
+        assert "No SKILL.md" in result["error"]
+
+    def test_batch_install_local_mixed_dirs(self, tmp_path, temp_skills_dir):
+        """Directories without SKILL.md are silently skipped."""
+        repo = tmp_path / "mixed"
+        repo.mkdir()
+        self._make_skill(repo, "real-skill", "Real")
+        (repo / "not-a-skill").mkdir()  # no SKILL.md
+        (repo / "readme.md").write_text("# Readme")  # file, not dir
+
+        result = install_skill(str(repo), str(temp_skills_dir))
+
+        assert result["success"] is True
+        assert result.get("batch") is not True  # only 1 skill → single install
+        assert result["name"] == "real-skill"
