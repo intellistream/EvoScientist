@@ -34,16 +34,16 @@
 
 <div align="center">
 
-**English | [简体中文](./README.zh-CN.md)**
+**English | [简体中文](./README_zh-cn.md)**
 
 </div>
 
-***EvoScientist aims to harness vibe research by enabling self-evolving AI scientists that autonomously explore, generate insights, and iteratively improve.
+**EvoScientist aims to harness vibe research by enabling self-evolving AI scientists that autonomously explore, generate insights, and iteratively improve.
 It is designed to be opinionated and ready to use out of the box, offering a living research system that grows alongside evolving agent skills, toolsets, and memory bases.
-Going beyond traditional human-in-the-loop systems, EvoScientist introduces an AI-in-human’s-loop paradigm, where AI acts as a research buddy that co-evolves with human researchers and internalises scholarly taste and scientific judgement.***
+Going beyond traditional human-in-the-loop systems, EvoScientist introduces an AI-in-human’s-loop paradigm, where AI acts as a research buddy that co-evolves with human researchers and internalises scholarly taste and scientific judgement.**
 
-<h3>Unified Control, Different Surfaces</h3>
-[TODO: Add a Demo to demonstrate the different interfaces (TUI, mobile) and how they connect to the same underlying proxy system.]
+<!-- <h3>Unified Control, Different Surfaces</h3>
+[TODO: Add a Demo to demonstrate the different interfaces (TUI, mobile) and how they connect to the same underlying proxy system.] -->
 <!-- <a href="https://github.com/EvoScientist/EvoScientist">
 <img width="100%" src="https://github.com/EvoScientist/EvoScientist/tree/main/.github/assets/EvoScientist_demo.gif?raw=true"></a> -->
 
@@ -54,6 +54,12 @@ Going beyond traditional human-in-the-loop systems, EvoScientist introduces an A
 - **🌐 Multi-Provider** — Anthropic, OpenAI, Google, NVIDIA — one config to switch.
 - **📱 Multi-Channel** — CLI as the hub; Telegram, Discord, Slack, Feishu, WeChat, and more — one agent session.
 - **🔌 MCP & Skills** — Plug in MCP servers or install skills from GitHub on the fly.
+
+## 🎯 ᯓ➤ Roadmap
+- [ ] 📑 Technical report on the way
+- [ ] 📺 Demo and tutorial in the works
+- [ ] 📊 Benchmark suite to be released
+- [ ] 🧩 More built-in skills and integrations ahead
 
 ## 🔥 News
 - **[27 Feb 2026]** ⛳ EvoScientist officially debuts!
@@ -302,7 +308,7 @@ We thank the authors for their valuable contributions to the open-source communi
 
 <p align="right"><a href="#top">🔝Back to top</a></p>
 
-## 🧪 EvoScientist Team
+## 🌍 Project Roles
 
 <table>
   <tbody>
@@ -322,7 +328,7 @@ We thank the authors for their valuable contributions to the open-source communi
                width="100" height="100"
                style="object-fit: cover; border-radius: 20%;" alt="Ziheng Zhang"/>
           <br />
-          <sub><b>Ziheng Zhang<sup>‡</sup></b></sub>
+          <sub><b>Ziheng Zhang</b><sup>‡</sup></sub>
         </a>
       </td>
       <td align="center">
@@ -331,7 +337,7 @@ We thank the authors for their valuable contributions to the open-source communi
                width="100" height="100"
                style="object-fit: cover; border-radius: 20%;" alt="Dinos Papakostas"/>
           <br />
-          <sub><b>Dinos Papakostas<sup>‡</sup></b></sub>
+          <sub><b>Dinos Papakostas</b><sup>‡1</sup></sub>
         </a>
       </td>
       <td align="center">
@@ -340,14 +346,20 @@ We thank the authors for their valuable contributions to the open-source communi
                width="100" height="100"
                style="object-fit: cover; border-radius: 20%;" alt="Yougang Lyu"/>
           <br />
-          <sub><b>Yougang Lyu<sup>§</sup></b></sub>
+          <sub><b>Yougang Lyu</b><sup>§1</sup></sub>
         </a>
       </td>
     </tr>
   </tbody>
 </table>
 
-> <sup>†</sup> Project Leader <sup>‡</sup> Core Developer <sup>§</sup> Project Correspondent
+#### Collaborators
+
+Jan Piotrowski<sup>1</sup>, Wiktor Cupiał<sup>1</sup>, Yuyue Zhao<sup>1</sup>, Xinhao Yi<sup>2</sup>, Jakub Kaliski<sup>1</sup>, Jakub Filipiuk<sup>1</sup>, Shuyu Guo<sup>1</sup>, Andreas Sauter<sup>1</sup>, Jacopo Urbani<sup>1</sup>, Zaiqiao Meng<sup>2</sup>, Zhaochun Ren, Lun Zhou<sup>1</sup>, Xiaohui Yan<sup>§1</sup>
+
+> <sup>†</sup>Project Lead & Engineering Lead <sup>‡</sup>Core Developer <sup>§</sup>Project Correspondent
+
+> <sup>1</sup>Xiaoyi DeepResearch Team <sup>2</sup>EvoAgentX Team
 
 For any enquiries or collaboration opportunities, please contact: [**EvoScientist.ai@gmail.com**](mailto:evoscientist.ai@gmail.com)
 
@@ -378,5 +390,5 @@ This project is licensed under the MIT License - see the [LICENSE](./LICENSE) fi
 ---
 
 <p align="center">
-  Made with ❤️ by the EvoScientist team and the open source community for the AI scientist community.
+  Initiated and led by <a href="https://github.com/x-izhang">Xi Zhang</a>, built with the open-source community.
 </p>
