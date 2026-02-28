@@ -399,7 +399,7 @@ Jan Piotrowski, Wiktor Cupiał, Yuyue Zhao, Xinhao Yi, Jakub Kaliski, Jakub Fili
 
 <img align="right" alt="EvoScientist Team" src=".github/assets/EvoScientist_team.png" width="20%" />
 
-我们欢迎各层次的开发者和研究者参与贡献。请参阅 [贡献指南](./CONTRIBUTING.md) 开始参与，帮助 EvoScientist 变得更好。
+我们欢迎各层次的开发者、研究者以及 AI 编程助手参与贡献。我们的 [贡献指南](./CONTRIBUTING.md) 同时面向人类和 AI Agent 编写，涵盖架构说明、设计模式、扩展指南和代码规范，帮助你安全高效地参与项目开发。
 
 ### 📈 Star 趋势
 

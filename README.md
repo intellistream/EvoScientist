@@ -389,7 +389,7 @@ For any enquiries or collaboration opportunities, please contact: [**EvoScientis
 
 <img align="right" alt="EvoScientist Team" src=".github/assets/EvoScientist_team.png" width="20%" />
 
-We welcome contributions from developers and researchers at all levels. Please refer to our [Contributing Guidelines](./CONTRIBUTING.md) to get started and help make EvoScientist more accessible.
+We welcome contributions from developers, researchers, and AI coding agents at all levels. Our [Contributing Guidelines](./CONTRIBUTING.md) are designed for both humans and AI agents — covering architecture, patterns, extension guides, and code standards to help you contribute safely and effectively.
 
 ### 📈 Star History
 
