@@ -38,8 +38,10 @@ from ..sessions import (
     list_threads,
     thread_exists,
 )
+from ..config.settings import get_config_dir
 from ..stream.events import stream_agent_events
 from ..stream.state import StreamState, _INTERNAL_TOOLS
+from .history_suggester import HistorySuggester
 
 from ._constants import LOGO_LINES, LOGO_GRADIENT, WELCOME_SLOGANS, build_metadata
 
@@ -296,6 +298,7 @@ def run_textual_interactive(
             self._comp_index: int = -1
             self._hitl_auto_approve: bool = False
             self._approval_future: asyncio.Future | None = None
+            self._history_suggester = HistorySuggester(get_config_dir() / "history")
 
         # ── Layout ─────────────────────────────────────────────
 
@@ -313,6 +316,7 @@ def run_textual_interactive(
                     yield Input(
                         placeholder="Type message (/ for commands)",
                         id="prompt",
+                        suggester=self._history_suggester,
                     )
 
             yield Static("", id="status")
@@ -1129,6 +1133,7 @@ def run_textual_interactive(
                 await self._handle_command(text)
                 return
 
+            self._history_suggester.append_entry(text)
             self._run_task = asyncio.ensure_future(self._run_turn(text))
 
         def on_input_changed(self, event: Input.Changed) -> None:
