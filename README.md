@@ -359,6 +359,16 @@ We thank the authors for their valuable contributions to the open-source communi
           <sub><b>Xi Zhang</b><sup>†§</sup></sub>
         </a>
       </td>
+      </td>
+      <td align="center">
+        <a href="https://youganglyu.github.io/">
+          <img src="https://youganglyu.github.io/images/profile.png"
+               width="100" height="100"
+               style="object-fit: cover; border-radius: 20%;" alt="Yougang Lyu"/>
+          <br />
+          <sub><b>Yougang Lyu</b><sup>‡§</sup></sub>
+        </a>
+      </td>
       <td align="center">
         <a href="https://din0s.me/">
           <img src="https://din0s.me/images/pk.jpg"
@@ -376,16 +386,6 @@ We thank the authors for their valuable contributions to the open-source communi
           <br />
           <sub><b>Ziheng Zhang</b><sup>‡</sup></sub>
         </a>
-      </td>
-      <td align="center">
-        <a href="https://youganglyu.github.io/">
-          <img src="https://youganglyu.github.io/images/profile.png"
-               width="100" height="100"
-               style="object-fit: cover; border-radius: 20%;" alt="Yougang Lyu"/>
-          <br />
-          <sub><b>Yougang Lyu</b><sup>§</sup></sub>
-        </a>
-      </td>
       <td align="center">
         <a href="https://xiaohuiyan.github.io/">
           <img src="https://xiaohuiyan.github.io/img/me.jpg"
