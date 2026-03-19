@@ -157,6 +157,11 @@ cd EvoScientist
 uv sync --dev
 ```
 
+enable pre-commit hooks:
+```bash
+uv run pre-commit install
+```
+
 <details>
 <summary> Using conda</summary>
 

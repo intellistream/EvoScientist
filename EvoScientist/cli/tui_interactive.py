@@ -260,7 +260,7 @@ def run_textual_interactive(
             padding: 0 1;
             border-bottom: solid #0284c7;
         }
-        # status {
+        #status {
             height: 1;
             background: #171a20;
             color: #f59e0b;
