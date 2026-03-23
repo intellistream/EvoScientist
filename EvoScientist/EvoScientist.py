@@ -336,6 +336,10 @@ def create_cli_agent(workspace_dir: str | None = None, checkpointer=None, config
     """
     import os as _os
 
+    from .runtime_env import ensure_torch_backend_autoload_safe_default
+
+    ensure_torch_backend_autoload_safe_default()
+
     from deepagents import create_deep_agent
     from deepagents.backends import CompositeBackend, FilesystemBackend
 

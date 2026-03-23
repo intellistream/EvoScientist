@@ -263,6 +263,14 @@ cp .env.example .env  # then fill in your keys
 EvoSci  # or EvoScientist — interactive mode (TUI by default)
 ```
 
+If you want a repository-local one-click launcher, run:
+
+```bash
+./start-evosci.sh
+```
+
+It only starts EvoScientist itself and keeps serving startup separate.
+
 ![demo](https://raw.githubusercontent.com/EvoScientist/EvoScientist/main/.github/assets/EvoScientist_cli.png)
 
 > Run `EvoSci -h` for all CLI options.

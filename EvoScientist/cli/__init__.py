@@ -1,5 +1,9 @@
 """EvoScientist CLI package."""
 
+from ..runtime_env import ensure_torch_backend_autoload_safe_default
+
+ensure_torch_backend_autoload_safe_default()
+
 # Backward-compat re-exports (tests import these from EvoScientist.cli)
 from ..stream.state import (  # noqa: F401
     StreamState,
