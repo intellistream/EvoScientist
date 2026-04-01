@@ -1,6 +1,6 @@
 [project]
 name = "EvoScientist"
-version = "0.0.3"
+version = "0.0.5"
 description = "EvoScientist: Towards Self-Evolving AI Scientists for End-to-End Scientific Discovery"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -62,6 +62,7 @@ telegram = ["python-telegram-bot>=21.0"]
 discord = ["discord.py>=2.3"]
 slack = ["slack-sdk>=3.27", "aiohttp>=3.9"]
 wechat = ["pycryptodome>=3.20"]
+feishu = ["lark-oapi>=1.4.0"]
 qq = ["qq-botpy>=1.0"]
 stt = ["faster-whisper>=1.0"]
 oauth = ["ccproxy-api>=0.2.4"]
@@ -71,6 +72,7 @@ all-channels = [
     "aiohttp>=3.9",
     "slack-sdk>=3.27",
     "pycryptodome>=3.20",
+    "lark-oapi>=1.4.0",
     "qq-botpy>=1.0",
 ]
 

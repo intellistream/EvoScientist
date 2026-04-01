@@ -110,6 +110,7 @@ STEPS = [
     "Thinking",
     "Skills",
     "MCP Servers",
+    "LaTeX",
     "Channels",
 ]
 
@@ -336,7 +337,7 @@ def validate_siliconflow_key(api_key: str) -> tuple[bool, str]:
 
 
 def validate_openrouter_key(api_key: str) -> tuple[bool, str]:
-    """Validate an OpenRouter API key by making a test request.
+    """Validate an OpenRouter API key via the authenticated /auth/key endpoint.
 
     Returns:
         Tuple of (is_valid, message).
@@ -345,20 +346,17 @@ def validate_openrouter_key(api_key: str) -> tuple[bool, str]:
         return True, "Skipped (no key provided)"
 
     try:
-        import openai
+        import httpx
 
-        client = openai.OpenAI(api_key=api_key, base_url="https://openrouter.ai/api/v1")
-        client.models.list()
-        return True, "Valid"
+        resp = httpx.get(
+            "https://openrouter.ai/api/v1/auth/key",
+            headers={"Authorization": f"Bearer {api_key}"},
+            timeout=10,
+        )
+        if resp.status_code == 200:
+            return True, "Valid"
+        return False, "Invalid API key"
     except Exception as e:
-        error_str = str(e).lower()
-        if (
-            "401" in error_str
-            or "unauthorized" in error_str
-            or "invalid" in error_str
-            or "authentication" in error_str
-        ):
-            return False, "Invalid API key"
         return False, f"Error: {e}"
 
 
@@ -1549,6 +1547,251 @@ def _ensure_npx(reason: str) -> bool:
     return False
 
 
+# =============================================================================
+# TinyTeX (LaTeX) helpers
+# =============================================================================
+
+
+def _check_latex_components() -> dict[str, bool]:
+    """Check which LaTeX components are available.
+
+    Returns:
+        Dict mapping component name to availability:
+        ``{"pdflatex": bool, "latexmk": bool, "tlmgr": bool}``.
+    """
+    result: dict[str, bool] = {}
+    for cmd in ("pdflatex", "latexmk", "tlmgr"):
+        exe = shutil.which(cmd)
+        if not exe:
+            result[cmd] = False
+            continue
+        try:
+            proc = subprocess.run(
+                [exe, "--version"],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            result[cmd] = proc.returncode == 0
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            result[cmd] = False
+    return result
+
+
+def _check_tinytex() -> bool:
+    """Check if a usable LaTeX distribution is available.
+
+    Returns:
+        True if pdflatex is found and working.
+    """
+    return _check_latex_components().get("pdflatex", False)
+
+
+def _detect_tinytex_install_method() -> tuple[str, str]:
+    """Detect the best way to install TinyTeX for this platform.
+
+    Returns:
+        Tuple of (method_name, install_command_or_url).
+    """
+    if sys.platform == "win32":
+        if shutil.which("choco"):
+            return "choco", "choco install tinytex -y"
+        if shutil.which("scoop"):
+            return "scoop", "scoop install tinytex"
+        return "manual", "https://yihui.org/tinytex/"
+
+    # macOS and Linux: use the official install script
+    if shutil.which("curl"):
+        return (
+            "curl",
+            'curl -sL "https://yihui.org/tinytex/install-bin-unix.sh" | sh',
+        )
+    if shutil.which("wget"):
+        return (
+            "wget",
+            'wget -qO- "https://yihui.org/tinytex/install-bin-unix.sh" | sh',
+        )
+
+    return "manual", "https://yihui.org/tinytex/"
+
+
+def _install_tinytex(method: str, command: str) -> bool:
+    """Install TinyTeX using the detected method.
+
+    Returns:
+        True if installation succeeded.
+    """
+    if method == "manual":
+        return False
+
+    if method in ("curl", "wget"):
+        # Pipe-to-shell commands must run through the shell
+        try:
+            proc = subprocess.run(
+                command,
+                shell=True,  # user confirmed install in wizard
+                capture_output=True,
+                text=True,
+                timeout=300,
+            )
+            return proc.returncode == 0
+        except subprocess.TimeoutExpired:
+            console.print("  [red]✗ Installation timed out[/red]")
+            return False
+        except Exception as e:
+            console.print(f"  [red]✗ Installation failed: {e}[/red]")
+            return False
+
+    # choco / scoop
+    parts = command.split()
+    exe = shutil.which(parts[0]) or parts[0]
+    try:
+        proc = subprocess.run(
+            [exe, *parts[1:]],
+            capture_output=True,
+            text=True,
+            timeout=300,
+        )
+        return proc.returncode == 0
+    except FileNotFoundError:
+        console.print(f"  [red]✗ {method} not found[/red]")
+        return False
+    except subprocess.TimeoutExpired:
+        console.print("  [red]✗ Installation timed out[/red]")
+        return False
+    except Exception as e:
+        console.print(f"  [red]✗ Installation failed: {e}[/red]")
+        return False
+
+
+def _print_latex_status(components: dict[str, bool]) -> None:
+    """Print a single-line status showing all LaTeX components."""
+    parts: list[str] = []
+    for cmd, _role in (
+        ("pdflatex", "compiler"),
+        ("latexmk", "build tool"),
+        ("tlmgr", "package manager"),
+    ):
+        if components.get(cmd, False):
+            parts.append(f"[green]✓ {cmd}[/green]")
+        else:
+            parts.append(f"[yellow]✗ {cmd}[/yellow]")
+    console.print("  " + "  ".join(parts))
+
+
+def _auto_install_latexmk() -> None:
+    """Auto-install latexmk via tlmgr when it is missing."""
+    console.print("  [dim]Installing latexmk via tlmgr...[/dim]")
+    tlmgr = shutil.which("tlmgr")
+    if not tlmgr:
+        return
+    try:
+        proc = subprocess.run(
+            [tlmgr, "install", "latexmk"],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        if proc.returncode == 0 and shutil.which("latexmk"):
+            console.print("  [green]✓ latexmk installed[/green]")
+        else:
+            console.print(
+                "  [yellow]⚠ Failed to install latexmk"
+                " (run: tlmgr install latexmk)[/yellow]"
+            )
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        console.print(
+            "  [yellow]⚠ Failed to install latexmk"
+            " (run: tlmgr install latexmk)[/yellow]"
+        )
+
+
+def _step_tinytex() -> None:
+    """Step 9: Prepare LaTeX environment (TinyTeX).
+
+    Asks the user whether they want to set up LaTeX for paper compilation.
+    If yes, checks for an existing installation and offers to install TinyTeX
+    when none is found.  The agent can auto-install missing LaTeX packages at
+    runtime via ``tlmgr``, so only the base TinyTeX is needed here.
+    """
+    latex_choices = [
+        Choice(title="No need (skip LaTeX setup)", value=False),
+        Choice(title="Install now (TinyTeX compiler)", value=True),
+    ]
+    prepare = questionary.select(
+        "LaTeX environment (needed to compile .tex → .pdf):",
+        choices=latex_choices,
+        default=False,
+        style=WIZARD_STYLE,
+        qmark=QMARK,
+    ).ask()
+
+    if prepare is None:
+        raise KeyboardInterrupt()
+
+    if not prepare:
+        _print_step_skipped("LaTeX", "skipped")
+        console.print(
+            "  [dim]Install later:"
+            ' curl -sL "https://yihui.org/tinytex/install-bin-unix.sh" | sh[/dim]'
+        )
+        return
+
+    # User wants LaTeX — check existing installation
+    console.print("  [dim]Checking LaTeX environment...[/dim]")
+
+    components = _check_latex_components()
+
+    if components["pdflatex"]:
+        # Already installed — show detailed status
+        _print_latex_status(components)
+        # Auto-fix missing latexmk if tlmgr is available
+        if not components["latexmk"] and components["tlmgr"]:
+            _auto_install_latexmk()
+        return
+
+    # Not installed — detect install method and offer
+    console.print("  [yellow]✗ pdflatex not found[/yellow]")
+    method, command = _detect_tinytex_install_method()
+
+    if method == "manual":
+        _print_step_skipped("LaTeX", "manual install needed")
+        console.print(f"  [dim]Install TinyTeX: {command}[/dim]")
+        return
+
+    install = questionary.confirm(
+        f"Install TinyTeX via {method}?",
+        default=True,
+        style=WIZARD_STYLE,
+        qmark=f"  {QMARK}",
+    ).ask()
+
+    if install is None:
+        raise KeyboardInterrupt()
+
+    if not install:
+        _print_step_skipped("LaTeX", "skipped")
+        console.print(f"  [dim]Install later: {command}[/dim]")
+        return
+
+    console.print("  [dim]Installing TinyTeX (this may take a minute)...[/dim]")
+    if _install_tinytex(method, command):
+        post = _check_latex_components()
+        if post["pdflatex"]:
+            _print_latex_status(post)
+            _print_step_result("LaTeX", "TinyTeX installed")
+        else:
+            console.print("  [green]✓ TinyTeX installed[/green]")
+            console.print(
+                "  [yellow]⚠ Restart your terminal"
+                " for pdflatex to appear in PATH[/yellow]"
+            )
+            _print_step_result("LaTeX", "installed (restart terminal for PATH)")
+    else:
+        console.print(f"  [dim]Install manually: {command}[/dim]")
+        _print_step_result("LaTeX", "installation failed", success=False)
+
+
 def _step_skills() -> list[str]:
     """Step 7: Optionally install recommended skills.
 
@@ -2140,25 +2383,76 @@ def _step_channels(config: EvoScientistConfig) -> dict[str, object]:
                 raise KeyboardInterrupt()
             updates[field_name] = value.strip()
 
-        # Feishu optional fields (verification_token & encrypt_key)
+        # Feishu: subscription mode + optional fields
         if ch_name == "feishu":
-            console.print(
-                "  [dim]The following fields are optional (press Enter to skip):[/dim]"
-            )
-            for field_name, prompt_label in [
-                ("feishu_verification_token", "Verification Token (optional)"),
-                ("feishu_encrypt_key", "Encrypt Key (optional)"),
-            ]:
-                current = getattr(config, field_name, "")
-                value = questionary.text(
-                    f"{prompt_label}:",
-                    default=current,
-                    style=WIZARD_STYLE,
-                    qmark=f"  {QMARK}",
-                ).ask()
-                if value is None:
-                    raise KeyboardInterrupt()
-                updates[field_name] = value.strip()
+            mode_choices = [
+                Choice(
+                    title="Webhook (requires public IP / port forwarding)",
+                    value="webhook",
+                ),
+                Choice(
+                    title="WebSocket long connection (no public IP needed)",
+                    value="websocket",
+                ),
+            ]
+            sub_mode = questionary.select(
+                "Subscription mode:",
+                choices=mode_choices,
+                default="webhook",
+                style=WIZARD_STYLE,
+                qmark=f"  {QMARK}",
+                use_indicator=True,
+            ).ask()
+            if sub_mode is None:
+                raise KeyboardInterrupt()
+            updates["feishu_subscription_mode"] = sub_mode
+
+            if sub_mode == "websocket":
+                # WebSocket mode needs lark-oapi SDK
+                try:
+                    __import__("lark_oapi")
+                except ImportError:
+                    console.print(
+                        '  [yellow]✗ WebSocket mode requires "lark-oapi".[/yellow]'
+                    )
+                    install_sdk = questionary.confirm(
+                        'Install "lark-oapi>=1.4.0" now?',
+                        default=True,
+                        style=WIZARD_STYLE,
+                        qmark=f"  {QMARK}",
+                    ).ask()
+                    if install_sdk is None:
+                        raise KeyboardInterrupt() from None
+                    if install_sdk:
+                        console.print('  [dim]Installing "lark-oapi"...[/dim]')
+                        if install_pip_package("lark-oapi>=1.4.0"):
+                            console.print("  [green]✓ Installed successfully.[/green]")
+                        else:
+                            console.print("  [red]✗ Installation failed.[/red]")
+                            console.print(
+                                f"  [dim]Run manually:[/dim] {pip_install_hint()} "
+                                '"lark-oapi>=1.4.0"'
+                            )
+            else:
+                # Webhook mode: prompt optional verification/encryption fields
+                console.print(
+                    "  [dim]The following fields are optional"
+                    " (press Enter to skip):[/dim]"
+                )
+                for field_name, prompt_label in [
+                    ("feishu_verification_token", "Verification Token (optional)"),
+                    ("feishu_encrypt_key", "Encrypt Key (optional)"),
+                ]:
+                    current = getattr(config, field_name, "")
+                    value = questionary.text(
+                        f"{prompt_label}:",
+                        default=current,
+                        style=WIZARD_STYLE,
+                        qmark=f"  {QMARK}",
+                    ).ask()
+                    if value is None:
+                        raise KeyboardInterrupt()
+                    updates[field_name] = value.strip()
 
         # Allowed senders (common for all channels)
         senders_field = f"{ch_name}_allowed_senders"
@@ -2502,7 +2796,10 @@ def run_onboard(skip_validation: bool = False) -> bool:
         # Step 8: MCP Servers
         _step_mcp_servers()
 
-        # Step 9: Channels
+        # Step 9: LaTeX (TinyTeX)
+        _step_tinytex()
+
+        # Step 10: Channels
         channel_updates = _step_channels(config)
         for key, value in channel_updates.items():
             setattr(config, key, value)

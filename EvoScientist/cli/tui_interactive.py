@@ -42,6 +42,7 @@ from .channel import (
     _message_queue,
     _set_channel_response,
 )
+from .file_mentions import complete_file_mention, resolve_file_mentions
 from .history_suggester import HistorySuggester
 
 _channel_logger = logging.getLogger(__name__)
@@ -114,6 +115,8 @@ def _build_welcome_banner(
     info.append(" \u2022 Type ", style="#ffe082")
     info.append("/", style="#ffe082 bold")
     info.append(" for commands", style="#ffe082")
+    info.append(" \u2022 ", style="#ffe082")
+    info.append("@ files", style="#ffe082 bold")
     info.append(" \u2022 Ctrl+C ", style="#ffe082")
     info.append("interrupt", style="#ffe082 bold")
     banner.append_text(info)
@@ -462,7 +465,9 @@ def run_textual_interactive(
         def on_mount(self) -> None:
             self._render_welcome()
             self._render_status()
-            self.query_one("#prompt", ChatTextArea).focus()
+            prompt = self.query_one("#prompt", ChatTextArea)
+            prompt.before_submit = self._handle_completion_enter
+            prompt.focus()
             # Show resume status
             if self._resume_warning:
                 self._append_system(self._resume_warning, style="yellow")
@@ -693,10 +698,12 @@ def run_textual_interactive(
             self,
             user_text: str,
             *,
+            display_text: str | None = None,
             on_thinking_cb: Callable[[str], None] | None = None,
             on_todo_cb: Callable[[list[dict]], None] | None = None,
             on_media_cb: Callable[[str], None] | None = None,
             skip_user_message: bool = False,
+            file_warnings: list[str] | None = None,
             channel_hitl_fn: Callable[[list], list[dict] | None] | None = None,
             channel_ask_user_fn: Callable[[dict], dict] | None = None,
         ) -> str:
@@ -706,6 +713,11 @@ def run_textual_interactive(
             ``_process_channel_message`` (channel).
 
             Args:
+                display_text: Text to show in UserMessage widget. When
+                    ``None`` (default), falls back to *user_text*.  This
+                    allows callers to show the original user input while
+                    sending the resolved (e.g. @file-expanded) text to
+                    the agent.
                 skip_user_message: If True, don't mount UserMessage (caller
                     already mounted it — e.g. channel messages with labels).
                 channel_hitl_fn: Optional channel-based HITL approval function.
@@ -719,7 +731,11 @@ def run_textual_interactive(
 
             # 1. Mount user message + loading spinner
             if not skip_user_message:
-                await container.mount(UserMessage(user_text))
+                await container.mount(UserMessage(display_text or user_text))
+            # Mount file warnings after user message so they appear in the
+            # correct position (between user input and model response).
+            for w in file_warnings or []:
+                self._append_system(f"⚠ {w}", style="yellow")
             loading = LoadingWidget()
             await container.mount(loading)
             container.scroll_end(animate=False)
@@ -1385,8 +1401,19 @@ def run_textual_interactive(
             self._render_status()
             cancelled = False
 
+            # Resolve @file mentions — inject file contents before sending to agent.
+            # Use self._workspace_dir (current session) not the startup-captured
+            # workspace_dir closure, which becomes stale after /new or /resume.
+            _, message_to_send, file_warnings = await asyncio.to_thread(
+                resolve_file_mentions, user_text, self._workspace_dir
+            )
+
             try:
-                await self._stream_with_widgets(user_text)
+                await self._stream_with_widgets(
+                    message_to_send,
+                    display_text=user_text,
+                    file_warnings=file_warnings,
+                )
             except asyncio.CancelledError:
                 cancelled = True
                 self._append_system("\nInterrupted by user", style="dim italic #ffe082")
@@ -1593,6 +1620,17 @@ def run_textual_interactive(
         def on_text_area_changed(self, event: ChatTextArea.Changed) -> None:
             text = event.text_area.text
             comp_widget = self.query_one("#completions", Static)
+
+            # @file mention completion
+            if "@" in text:
+                candidates = complete_file_mention(text, workspace_dir)
+                if candidates:
+                    self._comp_items = candidates
+                    self._comp_index = -1
+                    self._render_completions()
+                    comp_widget.display = True
+                    return
+
             if text.startswith("/"):
                 prefix = text.lower()
                 matches = [
@@ -1777,12 +1815,8 @@ def run_textual_interactive(
                 return
 
             prompt = self.query_one("#prompt", ChatTextArea)
-            # Insert at cursor position
-            pos = prompt.cursor_position
-            current = prompt.value
-            new_value = current[:pos] + text + current[pos:]
-            prompt.value = new_value
-            prompt.cursor_position = pos + len(text)
+            prompt.insert(text)
+            prompt.focus()
 
         def action_tab_complete(self) -> None:
             """Handle TAB: cycle completions when visible, otherwise no-op.
@@ -1799,27 +1833,52 @@ def run_textual_interactive(
             self._comp_index = (self._comp_index + 1) % len(self._comp_items)
             self._apply_selected_completion()
 
-        def on_key(self, event: Any) -> None:
+        def _handle_completion_enter(self) -> bool:
+            """Called by ChatTextArea before submitting on Enter.
+
+            If a completion is active and an item is selected, apply it
+            and suppress the submit.  If the list is visible but nothing
+            is selected (index == -1), select the first item instead of
+            submitting the raw prefix.
+
+            Returns:
+                True to suppress submit, False to allow it.
+            """
             comp_widget = self.query_one("#completions", Static)
             if not (comp_widget.display and self._comp_items):
-                return
+                return False
 
-            # Up/down are handled by priority bindings (action_edit_queued /
-            # action_down_delegate) — only enter needs on_key handling.
-            if event.key == "enter" and self._comp_index >= 0:
-                event.prevent_default()
-                event.stop()
-                self._apply_selected_completion()
-                self._hide_completions()
+            # If no item highlighted yet, select the first one
+            if self._comp_index < 0:
+                self._comp_index = 0
+
+            self._apply_selected_completion()
+            self._hide_completions()
+            return True
 
         def _apply_selected_completion(self) -> None:
-            """Apply the currently selected completion to the input field."""
+            """Apply the currently selected completion to the input field.
+
+            For ``@file`` completions the last ``@token`` is replaced in-place;
+            for slash-command completions the entire input is replaced.
+            """
             if self._comp_index < 0 or self._comp_index >= len(self._comp_items):
                 return
-            selected_cmd = self._comp_items[self._comp_index][0]
+            selected = self._comp_items[self._comp_index][0]
             prompt = self.query_one("#prompt", ChatTextArea)
-            prompt.value = selected_cmd + " "
-            prompt.cursor_position = len(prompt.value)
+
+            if selected.startswith("@"):
+                import re as _re
+
+                current = prompt.value
+                m = _re.search(r"@[^\s]*$", current)
+                if m:
+                    new_val = current[: m.start()] + selected + " "
+                else:
+                    new_val = current + selected + " "
+                prompt.value = new_val
+            else:
+                prompt.value = selected + " "
 
         def _hide_completions(self) -> None:
             self._comp_items = []
@@ -1832,11 +1891,11 @@ def run_textual_interactive(
             for i, (cmd, desc) in enumerate(self._comp_items):
                 if i == self._comp_index:
                     comp_text.append("\u25b8 ", style="bold")
-                    comp_text.append(f"{cmd:<22}", style="bold")
+                    comp_text.append(f"{cmd:<30}", style="bold")
                     comp_text.append(desc, style="bold")
                 else:
                     comp_text.append("  ", style="#888888")
-                    comp_text.append(f"{cmd:<22}", style="#888888")
+                    comp_text.append(f"{cmd:<30}", style="#888888")
                     comp_text.append(desc, style="#888888")
                 if i < len(self._comp_items) - 1:
                     comp_text.append("\n")
@@ -1862,42 +1921,81 @@ def run_textual_interactive(
             self._append_system(f"Unknown command: {command}", style="yellow")
 
         async def _render_history(self, thread_id_value: str) -> None:
-            """Render conversation history from a saved thread."""
+            """Render conversation history from a saved thread.
+
+            Restores human messages and AI responses (with Markdown and
+            thinking panels). Tool calls and other intermediate steps are
+            skipped — they are difficult to faithfully reproduce from
+            checkpoint data.
+            """
             messages = await get_thread_messages(thread_id_value)
             if not messages:
                 return
 
+            HISTORY_WINDOW = 50
             container = self.query_one("#chat", VerticalScroll)
-            await container.mount(
-                SystemMessage("── Conversation history ──", msg_style="dim")
-            )
-            for message in messages:
+
+            # Only human and ai messages; skip tool/system/other
+            display = [
+                m for m in messages if getattr(m, "type", None) in ("human", "ai")
+            ]
+
+            if len(display) > HISTORY_WINDOW:
+                skipped = len(display) - HISTORY_WINDOW
+                display = display[-HISTORY_WINDOW:]
+                await container.mount(
+                    SystemMessage(
+                        f"── ... {skipped} earlier messages ──", msg_style="dim"
+                    )
+                )
+            else:
+                await container.mount(
+                    SystemMessage("── Conversation history ──", msg_style="dim")
+                )
+
+            for message in display:
                 msg_type = getattr(message, "type", None)
                 content = getattr(message, "content", "") or ""
-                if isinstance(content, list):
-                    parts = [
-                        block.get("text", "")
-                        for block in content
-                        if isinstance(block, dict) and block.get("type") == "text"
-                    ]
-                    content = " ".join(parts) if parts else ""
-                content = content.strip()
-                if len(content) > 220:
-                    content = content[:220] + "..."
 
                 if msg_type == "human":
-                    await container.mount(UserMessage(content))
-                elif msg_type == "ai":
-                    tool_calls = getattr(message, "tool_calls", None) or []
+                    if isinstance(content, list):
+                        parts = [
+                            block.get("text", "")
+                            for block in content
+                            if isinstance(block, dict) and block.get("type") == "text"
+                        ]
+                        content = " ".join(parts) if parts else ""
+                    content = content.strip()
                     if content:
-                        await container.mount(Static(Text(content, style="dim")))
-                    if tool_calls:
-                        names = [tc.get("name", "?") for tc in tool_calls]
-                        await container.mount(
-                            Static(
-                                Text(f"  \u25b6 {', '.join(names)}", style="dim italic")
-                            )
-                        )
+                        await container.mount(UserMessage(content))
+
+                elif msg_type == "ai":
+                    # Extract thinking and text blocks from content list
+                    thinking_text = ""
+                    text_content = ""
+                    if isinstance(content, list):
+                        for block in content:
+                            if not isinstance(block, dict):
+                                continue
+                            if block.get("type") == "thinking":
+                                thinking_text += block.get("thinking", "")
+                            elif block.get("type") == "text":
+                                text_content += block.get("text", "")
+                    else:
+                        text_content = content or ""
+                    text_content = text_content.strip()
+
+                    # Render thinking as collapsed panel (click to expand)
+                    if thinking_text.strip() and show_thinking:
+                        w = ThinkingWidget(show_thinking=True)
+                        await container.mount(w)
+                        w.append_text(thinking_text)
+                        w.finalize()
+
+                    # Render AI response with full Markdown
+                    if text_content:
+                        await container.mount(AssistantMessage(text_content))
+
             await container.mount(
                 SystemMessage("── End of history ──", msg_style="dim")
             )
@@ -1914,6 +2012,10 @@ def run_textual_interactive(
                 quit_timeout,
                 lambda: setattr(self, "_quit_pending", False),
             )
+
+        def force_quit(self) -> None:
+            """Exit immediately without double-press confirmation (used by /exit command)."""
+            self._do_exit()
 
         def _do_exit(self) -> None:
             """Clean up channels and exit."""
