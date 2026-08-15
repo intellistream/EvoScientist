@@ -72,6 +72,7 @@ class TestEvoScientistConfig:
         assert config.tavily_api_key == ""
         assert config.provider == "anthropic"
         assert config.model == "claude-sonnet-4-5"
+        assert config.context_window_tokens == 0
         assert config.default_mode == "daemon"
         assert config.default_workdir == ""
         assert config.show_thinking is True
@@ -342,6 +343,11 @@ class TestPriorityChain:
         config = get_effective_config()
         assert config.ui_backend == "tui"
 
+    def test_env_context_window_override(self, temp_config_dir, monkeypatch):
+        monkeypatch.setenv("EVOSCIENTIST_CONTEXT_WINDOW_TOKENS", "32768")
+        config = get_effective_config()
+        assert config.context_window_tokens == 32768
+
     def test_env_api_key_override(self, temp_config_dir, monkeypatch):
         """Test API keys from env override file."""
         save_config(EvoScientistConfig(anthropic_api_key="file-key"))
@@ -403,6 +409,11 @@ class TestApplyConfigToEnv:
 
         assert os.environ.get("ANTHROPIC_API_KEY") is None
         assert os.environ.get("OPENAI_API_KEY") is None
+
+    def test_context_window_is_applied_for_model_initialization(self, clean_env):
+        config = EvoScientistConfig(context_window_tokens=32768)
+        apply_config_to_env(config)
+        assert os.environ.get("EVOSCIENTIST_CONTEXT_WINDOW_TOKENS") == "32768"
 
     def test_ollama_base_url_applied(self, clean_env, monkeypatch):
         """Test that ollama_base_url is applied to OLLAMA_BASE_URL env var."""

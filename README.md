@@ -240,6 +240,13 @@ git pull && uv sync --dev
 
 ## 🔑 Configuration
 
+For custom or self-hosted OpenAI-compatible endpoints, set
+`EVOSCIENTIST_CONTEXT_WINDOW_TOKENS` to the context length actually served by
+the backend. EvoScientist attaches this capability to the LangChain model
+profile so DeepAgents summarizes proactively instead of waiting for a provider
+context-overflow response. Native providers with a known model profile do not
+need this setting.
+
 The easiest way to configure API keys is the interactive wizard:
 
 ```bash

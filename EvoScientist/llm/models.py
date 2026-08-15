@@ -381,6 +381,26 @@ def get_chat_model(
     """
     model = model or DEFAULT_MODEL
 
+    configured_context_window = os.environ.get(
+        "EVOSCIENTIST_CONTEXT_WINDOW_TOKENS", ""
+    ).strip()
+    if configured_context_window:
+        try:
+            context_window_tokens = int(configured_context_window)
+        except ValueError as exc:
+            raise ValueError(
+                "EVOSCIENTIST_CONTEXT_WINDOW_TOKENS must be a positive integer"
+            ) from exc
+        if context_window_tokens <= 0:
+            raise ValueError(
+                "EVOSCIENTIST_CONTEXT_WINDOW_TOKENS must be a positive integer"
+            )
+        existing_profile = kwargs.get("profile")
+        kwargs["profile"] = {
+            **(existing_profile if isinstance(existing_profile, dict) else {}),
+            "max_input_tokens": context_window_tokens,
+        }
+
     # Look up short name in registry (provider-aware)
     model_id = None
     if provider:

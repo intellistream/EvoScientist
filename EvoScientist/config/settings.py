@@ -83,6 +83,9 @@ class EvoScientistConfig:
     # LLM Settings
     provider: str = "anthropic"
     model: str = "claude-sonnet-4-5"
+    # Explicit capability for custom/self-hosted models whose LangChain
+    # profile cannot be inferred. Zero keeps the provider's native profile.
+    context_window_tokens: int = 0
 
     # Workspace Settings
     default_mode: Literal["daemon", "run"] = "daemon"
@@ -376,6 +379,7 @@ _ENV_MAPPINGS = {
     "ui_backend": "EVOSCIENTIST_UI_BACKEND",
     "ccproxy_port": "EVOSCIENTIST_CCPROXY_PORT",
     "use_responses_api": "EVOSCIENTIST_USE_RESPONSES_API",
+    "context_window_tokens": "EVOSCIENTIST_CONTEXT_WINDOW_TOKENS",
 }
 
 
@@ -476,3 +480,9 @@ def apply_config_to_env(config: EvoScientistConfig) -> None:
         "EVOSCIENTIST_USE_RESPONSES_API"
     ):
         os.environ["EVOSCIENTIST_USE_RESPONSES_API"] = config.use_responses_api
+    if config.context_window_tokens > 0 and not os.environ.get(
+        "EVOSCIENTIST_CONTEXT_WINDOW_TOKENS"
+    ):
+        os.environ["EVOSCIENTIST_CONTEXT_WINDOW_TOKENS"] = str(
+            config.context_window_tokens
+        )

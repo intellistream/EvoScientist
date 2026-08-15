@@ -415,6 +415,30 @@ class TestThirdPartyRouting:
         assert call_kwargs["api_key"] == "custom-key-789"
 
     @patch("EvoScientist.llm.models.init_chat_model")
+    def test_custom_context_window_populates_model_profile(
+        self, mock_init, monkeypatch
+    ):
+        """Self-hosted capability hints must drive DeepAgents summarization."""
+        mock_init.return_value = "mock_model"
+        monkeypatch.setenv("CUSTOM_OPENAI_BASE_URL", "https://my-llm.example.com/v1")
+        monkeypatch.setenv("CUSTOM_OPENAI_API_KEY", "custom-key-789")
+        monkeypatch.setenv("EVOSCIENTIST_CONTEXT_WINDOW_TOKENS", "32768")
+
+        get_chat_model("my-custom-model", provider="custom-openai")
+
+        call_kwargs = mock_init.call_args[1]
+        assert call_kwargs["profile"]["max_input_tokens"] == 32768
+
+    @patch("EvoScientist.llm.models.init_chat_model")
+    def test_invalid_custom_context_window_is_rejected(self, mock_init, monkeypatch):
+        monkeypatch.setenv("EVOSCIENTIST_CONTEXT_WINDOW_TOKENS", "not-a-number")
+
+        with pytest.raises(ValueError, match="positive integer"):
+            get_chat_model("my-custom-model", provider="custom-openai")
+
+        mock_init.assert_not_called()
+
+    @patch("EvoScientist.llm.models.init_chat_model")
     def test_anthropic_base_url_override(self, mock_init, monkeypatch):
         """Anthropic provider should support base_url override (e.g. ccproxy)."""
         mock_init.return_value = "mock_model"
