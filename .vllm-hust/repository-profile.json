@@ -1,0 +1,29 @@
+{
+  "schema_version": "1.0",
+  "canonical_registry": "https://github.com/vLLM-HUST/vllm-hust-docs/tree/codex/ecosystem-architecture-reorganization/registry",
+  "repository": "https://github.com/vLLM-HUST/EvoScientist",
+  "repository_role": "application",
+  "relation_to_runtime": "adjacent_research",
+  "lifecycle": "incubating",
+  "artifacts": [
+    {
+      "id": "evoscientist-application",
+      "artifact_type": "application",
+      "system_role": "adjacent_application",
+      "delivery_model": "python_distribution",
+      "execution_planes": ["api", "external_service", "offline"],
+      "integration_contracts": [],
+      "integration_surfaces": ["model-provider APIs", "MCP servers", "agent skills"]
+    }
+  ],
+  "system_boundaries": {
+    "is": ["a self-evolving scientific-agent application and workflow product"],
+    "is_not": [
+      "an inference runtime or vLLM plugin",
+      "a serving control plane",
+      "evidence that any configured model provider is supported by vLLM-HUST"
+    ]
+  },
+  "validation": ["uv run pytest", "uv run pre-commit run --all-files"],
+  "compatibility_document": "README.md"
+}
